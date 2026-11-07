@@ -1,0 +1,16 @@
+//  Distro.xcconfig
+//  Distro — Detroit Automation Academy application store (Project 07)
+//
+//  DAADV3 T3 item 13 (DECLARE, DI-1/DI-2): the matched floor pair, declared
+//  in build-consumable form. Until this file landed, the tree carried the
+//  10.13 floor only as charter prose and source-header comments — there was
+//  no build setting in which the floor existed (T2-g census).
+//
+//  Floor: macOS 10.13 (High Sierra), DAADV3 baseline (REQ-H-1.2).
+//  Memory model: manual retain/release (MRR) — the model of record for this
+//  tree (source headers state it; the §2.2 gate runs this tree in MRR mode).
+//  ARC is pinned OFF here so the model is a build fact, not a comment.
+
+MACOSX_DEPLOYMENT_TARGET = 10.13
+CLANG_ENABLE_OBJC_ARC = NO
+GCC_C_LANGUAGE_STANDARD = gnu11
