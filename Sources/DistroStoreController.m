@@ -132,6 +132,8 @@ enum {
         _downloader = [[DistroDownloader alloc] init];
         [_downloader setDelegate:self];
         _iconCache = [[NSMutableDictionary alloc] init];
+        _placeholderCache = [[NSMutableDictionary alloc] init];
+        _iconFetchesInFlight = [[NSMutableSet alloc] init];
         _activeFilter = [@"all" retain];
         [self buildInterface];
         [window center];
@@ -147,6 +149,8 @@ enum {
     [_sidebarItems release];
     [_activeFilter release];
     [_iconCache release];
+    [_placeholderCache release];
+    [_iconFetchesInFlight release];
     [_busyAppID release];
     [super dealloc];
 }
@@ -189,22 +193,32 @@ enum {
     [sidebar setAutoresizingMask:NSViewHeightSizable | NSViewMaxXMargin];
     [content addSubview:sidebar];
 
+    // Sidebar header = the standard lockup (SDS-4; prototype of record:
+    // files/test2-header-prototype.svg). distro-test-1 defect V-1/V-2/V-3:
+    // the wordmark frame (bottom at top-52+20) and the publisher frame
+    // (top at top-70+26 = top-44) OVERLAPPED by 8 pt, so "Distro" drew
+    // over "Detroit Automation" (owner screenshot, 2026-11-08 00:43);
+    // and the sidebar table began 26 pt below the header block, leaving
+    // a dead gap above CATEGORIES. Geometry below (sidebar-local, top =
+    // H - statusH): mark 56x56, 14 pt top margin; wordmark top-aligned
+    // with the mark; publisher stacked UNDER the wordmark with 3 pt
+    // clear; table top 10 pt under the header block. No frame overlaps.
     DistroLogoView *logo = [[[DistroLogoView alloc]
-        initWithFrame:NSMakeRect(14, H - statusH - 76, 56, 56)] autorelease];
+        initWithFrame:NSMakeRect(14, H - statusH - 70, 56, 56)] autorelease];
     [logo setAutoresizingMask:NSViewMinYMargin];
     [sidebar addSubview:logo];
     NSTextField *wordmark = DistroMakeLabel(@"Distro", 15, YES, [NSColor blackColor]);
-    [wordmark setFrame:NSMakeRect(80, H - statusH - 52, 124, 20)];
+    [wordmark setFrame:NSMakeRect(80, H - statusH - 35, 124, 21)];
     [wordmark setAutoresizingMask:NSViewMinYMargin];
     [sidebar addSubview:wordmark];
     NSTextField *publisher = DistroMakeLabel(@"Detroit Automation Academy", 10.5, NO, DistroMutedColor());
-    [publisher setFrame:NSMakeRect(80, H - statusH - 70, 124, 26)];
+    [publisher setFrame:NSMakeRect(80, H - statusH - 65, 124, 27)];
     [[publisher cell] setWraps:YES];
     [publisher setAutoresizingMask:NSViewMinYMargin];
     [sidebar addSubview:publisher];
 
     NSScrollView *sidebarScroll = [[[NSScrollView alloc]
-        initWithFrame:NSMakeRect(0, 0, sidebarW, H - statusH - 96)] autorelease];
+        initWithFrame:NSMakeRect(0, 0, sidebarW, H - statusH - 80)] autorelease];
     [sidebarScroll setAutoresizingMask:NSViewHeightSizable];
     [sidebarScroll setHasVerticalScroller:YES];
     [sidebarScroll setBorderType:NSNoBorder];
@@ -261,11 +275,14 @@ enum {
     [_detailView addSubview:hline];
     CGFloat dw = W - sidebarW - 1;
     _detailName = [DistroMakeLabel(@"", 15, YES, [NSColor blackColor]) retain];
-    [_detailName setFrame:NSMakeRect(14, detailH - 34, 480, 20)];
+    [_detailName setFrame:NSMakeRect(14, detailH - 34, 300, 20)];
     [_detailView addSubview:_detailName];
+    // Status word sits inside the title block, immediately after the
+    // app name on the same baseline — distro-test-1 floated it at the
+    // detail pane's far right edge, detached from the title.
     _detailStatus = [DistroMakeLabel(@"", 11, NO, DistroMutedColor()) retain];
-    [_detailStatus setFrame:NSMakeRect(500, detailH - 33, dw - 514, 18)];
-    [_detailStatus setAlignment:NSTextAlignmentRight];
+    [_detailStatus setFrame:NSMakeRect(322, detailH - 33, dw - 336, 18)];
+    [_detailStatus setAlignment:NSTextAlignmentLeft];
     [_detailView addSubview:_detailStatus];
     _detailDescription = [DistroMakeLabel(@"", 12, NO, [NSColor blackColor]) retain];
     [_detailDescription setFrame:NSMakeRect(14, detailH - 92, dw - 28, 52)];
@@ -324,6 +341,7 @@ enum {
                 @"Catalog loaded — %lu apps. Publisher: Detroit Automation Academy.",
                 (unsigned long)[entries count]]];
             [selfRef rebuildSidebarAndReload];
+            [selfRef fetchCatalogIcons];
         }];
 }
 
@@ -536,11 +554,57 @@ enum {
     }
 }
 
-#pragma mark - Placeholder icons (drawn in-house, monochrome — SDS-3)
+#pragma mark - Catalog icons (iconURL fetch) + monogram fallback (SDS-3)
+
+// distro-test-1 never loaded the catalog's iconURL images at all —
+// rows always showed the drawn monograms, and because every
+// /store/icons/*.png was then a 404 the fallback was all the owner
+// ever saw (defect V-4). Test-2 fetches each entry's icon from the
+// Academy host after the catalog loads, caches it, and keeps the
+// in-house monogram strictly as the unreachable-icon fallback.
+- (void)fetchCatalogIcons {
+    for (DistroAppEntry *entry in _entries) {
+        NSString *appID = [entry appID];
+        NSURL *url = [entry iconURL];
+        if (appID == nil || url == nil) continue;
+        if ([_iconCache objectForKey:appID] != nil) continue;
+        if ([_iconFetchesInFlight containsObject:appID]) continue;
+        if (![[url scheme] isEqualToString:@"https"]) continue;
+        NSString *host = [url host];
+        if (![host isEqualToString:@"detroitautomationacademy.com"] &&
+            ![host isEqualToString:@"www.detroitautomationacademy.com"]) continue;
+        [_iconFetchesInFlight addObject:appID];
+        NSString *key = [[appID retain] autorelease];
+        // Assignment form, as in DistroCatalog's fetch (the chained
+        // `... ] resume]` form does not parse under this SDK/clang).
+        NSURLSessionDataTask *task =
+            [[NSURLSession sharedSession] dataTaskWithURL:url
+            completionHandler:^(NSData *data, NSURLResponse *response, NSError *error) {
+                NSImage *image = nil;
+                if (data != nil && error == nil) {
+                    image = [[[NSImage alloc] initWithData:data] autorelease];
+                    if (image != nil &&
+                        ([image size].width < 1 || [image size].height < 1)) {
+                        image = nil;
+                    }
+                }
+                dispatch_async(dispatch_get_main_queue(), ^{
+                    [_iconFetchesInFlight removeObject:key];
+                    if (image != nil) {
+                        [_iconCache setObject:image forKey:key];
+                        [_appTable reloadData];
+                    }
+                });
+            }];
+        [task resume];
+    }
+}
 
 - (NSImage *)iconForEntry:(DistroAppEntry *)entry {
     NSImage *cached = [_iconCache objectForKey:[entry appID]];
     if (cached != nil) return cached;
+    NSImage *placeholder = [_placeholderCache objectForKey:[entry appID]];
+    if (placeholder != nil) return placeholder;
     NSString *name = [entry name] != nil ? [entry name] : @"?";
     NSMutableString *initials = [NSMutableString string];
     for (NSString *word in [name componentsSeparatedByString:@" "]) {
@@ -564,7 +628,7 @@ enum {
     [initials drawAtPoint:NSMakePoint((80 - textSize.width) / 2, (80 - textSize.height) / 2)
            withAttributes:attrs];
     [image unlockFocus];
-    if (image != nil) [_iconCache setObject:image forKey:[entry appID]];
+    if (image != nil) [_placeholderCache setObject:image forKey:[entry appID]];
     return image;
 }
 

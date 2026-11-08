@@ -27,7 +27,9 @@
     NSArray *_visibleEntries;  // after sidebar filter
     NSArray *_sidebarItems;    // NSDictionary rows
     NSString *_activeFilter;   // @"all" | @"installed" | @"updates" | category name
-    NSMutableDictionary *_iconCache;
+    NSMutableDictionary *_iconCache;          // fetched catalog icons, by appID
+    NSMutableDictionary *_placeholderCache;   // drawn monogram fallbacks, by appID
+    NSMutableSet *_iconFetchesInFlight;       // appIDs with an icon fetch running
 
     NSTableView *_sidebarTable;
     NSTableView *_appTable;

@@ -81,7 +81,7 @@ jobs:
           BUILT=$(date -u '+%Y-%m-%d %H:%M UTC')
           NOTES="Internal test build of Distro, the Detroit Automation Academy application store for macOS High Sierra. Publisher: Detroit Automation Academy. Unsigned test build — not gate-cleared, not yet verified on the High Sierra rig.
 
-          BUILD STAMP — Built: $BUILT · Build: distro-test-${{ github.run_number }} (CI run ${{ github.run_id }}) · Agent: Forge · Authorized: J. Spencer Smith, directive of 2026-11-08 (prepare Distro MVP for download)"
+          BUILD STAMP — Built: $BUILT · Build: distro-test-${{ github.run_number }} (CI run ${{ github.run_id }}) · Agent: Forge · Authorized: J. Spencer Smith, directive of 2026-11-08 (The application icon needs to be academy standard, high priority, redraft and continue)"
           gh release create distro-test-${{ github.run_number }} Distro-test.zip \
             --prerelease \
             --title "Distro test build ${{ github.run_number }}" \
