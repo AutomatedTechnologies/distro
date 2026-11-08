@@ -244,6 +244,18 @@ enum {
     [refresh setAction:@selector(refreshPressed:)];
     [refresh setAutoresizingMask:NSViewMinXMargin];
     [statusBar addSubview:refresh];
+    // Update All (J directive 2026-11-08): serves the Updates
+    // section; enabled only when at least one update is pending
+    // (set in rebuildSidebarAndReload) and no queue is running.
+    _updateAllButton = [[NSButton alloc] initWithFrame:NSMakeRect(W - 232, 2, 110, 22)];
+    [_updateAllButton setTitle:@"Update All"];
+    [_updateAllButton setBezelStyle:NSBezelStyleRounded];
+    [_updateAllButton setFont:[NSFont systemFontOfSize:11]];
+    [_updateAllButton setTarget:self];
+    [_updateAllButton setAction:@selector(updateAllPressed:)];
+    [_updateAllButton setAutoresizingMask:NSViewMinXMargin];
+    [_updateAllButton setEnabled:NO];
+    [statusBar addSubview:_updateAllButton];
 
     // ---- Sidebar
     NSView *sidebar = [[[NSView alloc] initWithFrame:NSMakeRect(0, statusH, sidebarW, H - statusH)] autorelease];
@@ -463,6 +475,7 @@ enum {
     [items addObject:[NSDictionary dictionaryWithObjectsAndKeys:
         @"filter", @"kind", @"installed", @"filter", @"Installed", @"title", nil]];
     NSInteger updates = [self updatesCount];
+    [_updateAllButton setEnabled:(updates > 0 && _updateQueue == nil)];
     NSString *updatesTitle = updates > 0
         ? [NSString stringWithFormat:@"Updates (%ld)", (long)updates]
         : @"Updates";
@@ -993,6 +1006,88 @@ enum {
     [_appTable reloadData];
 }
 
+#pragma mark - Update All queue
+
+// Scope (J directive 2026-11-08): installed + newer catalog version
+// + installable — exactly the entries whose state is Update.
+- (void)updateAllPressed:(id)sender {
+    if (_updateQueue != nil) return;
+    NSMutableArray *queue = [NSMutableArray array];
+    for (DistroAppEntry *entry in _entries) {
+        if ([self stateForEntry:entry] == DistroStateUpdate) {
+            [queue addObject:entry];
+        }
+    }
+    if ([queue count] == 0) {
+        [self setStatus:@"Everything is up to date."];
+        return;
+    }
+    _updateQueue = [queue retain];
+    _queueTotal = (NSInteger)[queue count];
+    _updatedNames = [[NSMutableArray alloc] init];
+    _failedLines = [[NSMutableArray alloc] init];
+    [_updateAllButton setEnabled:NO];
+    [self advanceUpdateQueue];
+}
+
+// Runs one queued update through the existing single-operation path
+// (_busyAppID design): the queue advances only from the completion
+// paths in the downloader delegate / installer completion below.
+- (void)advanceUpdateQueue {
+    if ([_updateQueue count] == 0) {
+        [self finishUpdateQueue];
+        return;
+    }
+    DistroAppEntry *entry = [[_updateQueue objectAtIndex:0] retain];
+    [_updateQueue removeObjectAtIndex:0];
+    _queueDone = _queueTotal - (NSInteger)[_updateQueue count];
+    if (![_downloader startDownloadForEntry:entry]) {
+        [_failedLines addObject:[NSString stringWithFormat:
+            @"%@ — another download was already in progress", [entry name]]];
+        [entry release];
+        [self advanceUpdateQueue];
+        return;
+    }
+    [_busyAppID release];
+    _busyAppID = [[entry appID] retain];
+    [_progress setDoubleValue:0];
+    [_progress setIndeterminate:NO];
+    [_progress setHidden:NO];
+    [self setStatus:[NSString stringWithFormat:@"Updating %ld of %ld — %@…",
+        (long)_queueDone, (long)_queueTotal, [entry name]]];
+    [_appTable reloadData];
+    [entry release];
+}
+
+- (void)finishUpdateQueue {
+    NSArray *updated = [[_updatedNames copy] autorelease];
+    NSArray *failed = [[_failedLines copy] autorelease];
+    [_updateQueue release];
+    _updateQueue = nil;
+    [_updatedNames release];
+    _updatedNames = nil;
+    [_failedLines release];
+    _failedLines = nil;
+    [self rebuildSidebarAndReload];
+    [self updateDetail];
+    [self setStatus:[NSString stringWithFormat:
+        @"Update All complete — %lu updated, %lu not completed.",
+        (unsigned long)[updated count], (unsigned long)[failed count]]];
+    NSMutableString *body = [NSMutableString string];
+    if ([updated count] > 0) {
+        [body appendFormat:@"Updated: %@.", [updated componentsJoinedByString:@", "]];
+    }
+    if ([failed count] > 0) {
+        if ([body length] > 0) [body appendString:@"\n"];
+        [body appendFormat:@"Not completed: %@.", [failed componentsJoinedByString:@"; "]];
+    }
+    NSAlert *alert = [[[NSAlert alloc] init] autorelease];
+    [alert setMessageText:@"Update All complete"];
+    [alert setInformativeText:body];
+    [alert addButtonWithTitle:@"OK"];
+    [alert runModal];
+}
+
 #pragma mark - Downloader delegate
 
 - (void)downloader:(DistroDownloader *)downloader
@@ -1003,8 +1098,15 @@ enum {
     } else {
         [_progress setIndeterminate:NO];
         [_progress setDoubleValue:fraction];
-        [self setStatus:[NSString stringWithFormat:@"Downloading %@ — %.0f%%",
-            [entry name], fraction * 100]];
+        if (_updateQueue != nil) {
+            [self setStatus:[NSString stringWithFormat:
+                @"Updating %ld of %ld — %@ — %.0f%%",
+                (long)_queueDone, (long)_queueTotal,
+                [entry name], fraction * 100]];
+        } else {
+            [self setStatus:[NSString stringWithFormat:@"Downloading %@ — %.0f%%",
+                [entry name], fraction * 100]];
+        }
     }
 }
 
@@ -1017,6 +1119,15 @@ enum {
     [_progress setHidden:YES];
     [_appTable reloadData];
     if (error != nil || filePath == nil) {
+        if (_updateQueue != nil) {
+            // Queue mode: a failure never stops the queue and never
+            // raises its own sheet — it lands in the summary.
+            [_failedLines addObject:[NSString stringWithFormat:
+                @"%@ — download failed: %@", [entry name],
+                [error localizedDescription]]];
+            [self advanceUpdateQueue];
+            return;
+        }
         [self setStatus:[NSString stringWithFormat:@"Download failed for %@: %@",
             [entry name], [error localizedDescription]]];
         [self showAlertText:@"Download failed"
@@ -1026,10 +1137,20 @@ enum {
     [self setStatus:[NSString stringWithFormat:
         @"Downloaded %@ — verifying SHA-256 against the catalog…", [entry name]]];
     DistroStoreController *selfRef = self;
+    BOOL inQueue = (_updateQueue != nil);
     [DistroInstaller verifyAndInstallFileAtPath:filePath
         forEntry:entry
         completion:^(NSDictionary *result, NSError *installError) {
             if (installError != nil) {
+                if (inQueue) {
+                    // SHA-256 / audit-gate stops land in the summary;
+                    // the gate itself is untouched — no bypass.
+                    [selfRef->_failedLines addObject:[NSString stringWithFormat:
+                        @"%@ — %@", [entry name],
+                        [installError localizedDescription]]];
+                    [selfRef advanceUpdateQueue];
+                    return;
+                }
                 [selfRef setStatus:[installError localizedDescription]];
                 [selfRef showAlertText:@"Install stopped"
                                 message:[installError localizedDescription]];
@@ -1037,7 +1158,15 @@ enum {
             }
             NSString *format = [result objectForKey:DistroInstallResultFormatKey];
             if ([format isEqualToString:@"pkg"]) {
-                [selfRef confirmPkgInstallForEntry:entry];
+                if (inQueue) {
+                    [selfRef->_failedLines addObject:[NSString stringWithFormat:
+                        @"%@ — verified and opened in the system Installer; "
+                        @"mark it as installed from its row when the Installer "
+                        @"finishes", [entry name]]];
+                    [selfRef advanceUpdateQueue];
+                } else {
+                    [selfRef confirmPkgInstallForEntry:entry];
+                }
             } else {
                 NSString *installedPath =
                     [result objectForKey:DistroInstallResultBundlePathKey];
@@ -1050,12 +1179,22 @@ enum {
                                        bundlePath:installedPath
                                          bundleID:[identity objectForKey:@"bundleID"]
                                        bundleName:[identity objectForKey:@"name"]];
-                [selfRef setStatus:[NSString stringWithFormat:@"%@ installed.", [entry name]]];
-                [selfRef rebuildSidebarAndReload];
-                [selfRef updateDetail];
-                [selfRef offerLaunchForEntry:entry
-                                  bundlePath:[result objectForKey:DistroInstallResultBundlePathKey]
-                                      appsDir:[result objectForKey:DistroInstallResultAppsDirKey]];
+                if (inQueue) {
+                    // Queue mode: record the outcome and advance —
+                    // no per-app "%@ installed." sheet, no launch
+                    // offer; one summary sheet ends the queue.
+                    [selfRef->_updatedNames addObject:[entry name]];
+                    [selfRef rebuildSidebarAndReload];
+                    [selfRef updateDetail];
+                    [selfRef advanceUpdateQueue];
+                } else {
+                    [selfRef setStatus:[NSString stringWithFormat:@"%@ installed.", [entry name]]];
+                    [selfRef rebuildSidebarAndReload];
+                    [selfRef updateDetail];
+                    [selfRef offerLaunchForEntry:entry
+                                      bundlePath:[result objectForKey:DistroInstallResultBundlePathKey]
+                                          appsDir:[result objectForKey:DistroInstallResultAppsDirKey]];
+                }
             }
         }];
 }
