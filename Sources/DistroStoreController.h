@@ -38,6 +38,7 @@
     NSView *_detailChip;      // SDS-9 capsule behind the status word
     NSTextField *_detailStatus;
     NSTextField *_detailDescription;
+    NSTextField *_detailBuildNotes;
     NSTextField *_detailMeta;
     NSTextField *_detailHash;
     NSButton *_detailCopyButton;
