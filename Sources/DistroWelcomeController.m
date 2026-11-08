@@ -67,7 +67,10 @@ static NSTextField *DistroLabel(NSString *text, CGFloat size, BOOL bold, NSColor
         [continueButton setAction:@selector(continuePressed:)];
         [continueButton setKeyEquivalent:@"\r"];
         [content addSubview:continueButton];
-        [window setDefaultButtonCell:[continueButton cell]];
+        // Monochrome standard (DAADV2/SDS): a window default button renders
+        // blue (pulsing) on 10.13, so Continue is NOT set as the default
+        // button cell — the Return key equivalent above still dismisses,
+        // and the button renders in the standard gray bezel.
 
         [window center];
     }
