@@ -4,6 +4,7 @@
 //
 
 #import "DistroStoreController.h"
+#import <QuartzCore/QuartzCore.h>
 #import "DistroCatalog.h"
 #import "DistroAppEntry.h"
 #import "DistroInstalledRecords.h"
@@ -18,6 +19,51 @@ static NSColor *DistroPanelColor(void) {
 }
 static NSColor *DistroFaintColor(void) {
     return [NSColor colorWithCalibratedWhite:0.6 alpha:1.0];
+}
+
+// SDS-9 liquid-glass cues, translated to the monochrome ramp and
+// rendered with flat tints only (no backdrop blur anywhere — the
+// 10.13 floor must read correctly without it):
+// - layered tint depth: window ground = panel (DistroPanelColor),
+//   recessed rails (sidebar, status bar) one step deeper (0.93),
+//   floating sheets (detail pane, tables) = paper (1.0).
+// - specular edge: the glass hairline pair — a 1 pt paper-bright
+//   strip with the ink hairline directly beneath/beside it.
+// - fluid geometry: primary controls and status chips are capsules
+//   (corner radius = half the height).
+static NSColor *DistroDeepColor(void) {
+    return [NSColor colorWithCalibratedWhite:0.93 alpha:1.0];
+}
+static NSColor *DistroPaperColor(void) {
+    return [NSColor colorWithCalibratedWhite:1.0 alpha:1.0];
+}
+
+static void DistroSetGround(NSView *view, NSColor *color) {
+    [view setWantsLayer:YES];
+    [[view layer] setBackgroundColor:[color CGColor]];
+}
+
+// One 1 pt strip of a hairline pair (layer-backed, flat color).
+static void DistroAddStrip(NSView *parent, NSRect frame, NSColor *color,
+                           NSUInteger mask) {
+    NSView *strip = [[[NSView alloc] initWithFrame:frame] autorelease];
+    [strip setWantsLayer:YES];
+    [[strip layer] setBackgroundColor:[color CGColor]];
+    [strip setAutoresizingMask:mask];
+    [parent addSubview:strip];
+}
+
+// Capsule form for a primary control: the layer carries the shape
+// (paper fill, ink hairline border, radius = half the height) and
+// the button cell draws only its title.
+static void DistroStyleCapsule(NSButton *button) {
+    [button setBordered:NO];
+    [button setWantsLayer:YES];
+    CALayer *layer = [button layer];
+    [layer setCornerRadius:NSHeight([button frame]) / 2.0];
+    [layer setBorderWidth:1.0];
+    [layer setBorderColor:[[NSColor blackColor] CGColor]];
+    [layer setBackgroundColor:[DistroPaperColor() CGColor]];
 }
 
 static NSTextField *DistroMakeLabel(NSString *text, CGFloat size, BOOL bold, NSColor *color) {
@@ -78,6 +124,9 @@ static NSTextField *DistroMakeLabel(NSString *text, CGFloat size, BOOL bold, NSC
         _stateButton = [[NSButton alloc] initWithFrame:NSMakeRect(640, 14, 118, 30)];
         [_stateButton setBezelStyle:NSBezelStyleRounded];
         [_stateButton setFont:[NSFont systemFontOfSize:12]];
+        // SDS-9: the row's state control is the primary control —
+        // capsule form (fluid geometry cue).
+        DistroStyleCapsule(_stateButton);
         [self addSubview:_stateButton];
     }
     return self;
@@ -165,9 +214,14 @@ enum {
     CGFloat W = 1020, H = 660;
     CGFloat statusH = 26, sidebarW = 210, detailH = 172;
 
+    // SDS-9 layered tint depth: window ground = panel tint.
+    DistroSetGround(content, DistroPanelColor());
+
     // ---- Status bar (always visible, SDS-5)
     NSView *statusBar = [[[NSView alloc] initWithFrame:NSMakeRect(0, 0, W, statusH)] autorelease];
     [statusBar setAutoresizingMask:NSViewWidthSizable | NSViewMinYMargin];
+    // Recessed rail: one tint step deeper than the ground.
+    DistroSetGround(statusBar, DistroDeepColor());
     [content addSubview:statusBar];
     _statusLabel = [DistroMakeLabel(@"Starting…", 11, NO, DistroMutedColor()) retain];
     [_statusLabel setFrame:NSMakeRect(10, 5, 520, 16)];
@@ -194,6 +248,8 @@ enum {
     // ---- Sidebar
     NSView *sidebar = [[[NSView alloc] initWithFrame:NSMakeRect(0, statusH, sidebarW, H - statusH)] autorelease];
     [sidebar setAutoresizingMask:NSViewHeightSizable | NSViewMaxXMargin];
+    // Recessed rail: one tint step deeper than the ground (SDS-9).
+    DistroSetGround(sidebar, DistroDeepColor());
     [content addSubview:sidebar];
 
     // Sidebar header = the standard lockup (SDS-4; prototype of record:
@@ -240,12 +296,13 @@ enum {
     [sidebarScroll setDocumentView:_sidebarTable];
     [sidebar addSubview:sidebarScroll];
 
-    // Hairline between sidebar and content.
-    NSView *vline = [[[NSView alloc] initWithFrame:NSMakeRect(sidebarW, statusH, 1, H - statusH)] autorelease];
-    [vline setWantsLayer:YES];
-    [[vline layer] setBackgroundColor:[[NSColor blackColor] CGColor]];
-    [vline setAutoresizingMask:NSViewHeightSizable | NSViewMaxXMargin];
-    [content addSubview:vline];
+    // Glass hairline pair between sidebar and content (SDS-9
+    // specular edge): ink hairline on the sidebar's last column,
+    // paper-bright strip on the content's first column.
+    DistroAddStrip(content, NSMakeRect(sidebarW - 1, statusH, 1, H - statusH),
+                   [NSColor blackColor], NSViewHeightSizable | NSViewMaxXMargin);
+    DistroAddStrip(content, NSMakeRect(sidebarW, statusH, 1, H - statusH),
+                   DistroPaperColor(), NSViewHeightSizable | NSViewMaxXMargin);
 
     // ---- App table
     NSScrollView *appScroll = [[[NSScrollView alloc]
@@ -253,7 +310,11 @@ enum {
     [appScroll setAutoresizingMask:NSViewWidthSizable | NSViewHeightSizable];
     [appScroll setHasVerticalScroller:YES];
     [appScroll setBorderType:NSNoBorder];
+    // Floating layer ground: paper above the window ground (SDS-9).
+    [appScroll setDrawsBackground:YES];
+    [appScroll setBackgroundColor:DistroPaperColor()];
     _appTable = [[NSTableView alloc] initWithFrame:NSZeroRect];
+    [_appTable setBackgroundColor:DistroPaperColor()];
     NSTableColumn *acol = [[[NSTableColumn alloc] initWithIdentifier:@"app"] autorelease];
     [acol setWidth:W - sidebarW - 20];
     [_appTable addTableColumn:acol];
@@ -270,12 +331,18 @@ enum {
     // ---- Detail view
     _detailView = [[NSView alloc] initWithFrame:NSMakeRect(sidebarW + 1, statusH, W - sidebarW - 1, detailH)];
     [_detailView setAutoresizingMask:NSViewWidthSizable | NSViewMaxYMargin];
+    // Floating sheet: paper, one tint step above the ground (SDS-9).
+    DistroSetGround(_detailView, DistroPaperColor());
     [content addSubview:_detailView];
-    NSView *hline = [[[NSView alloc] initWithFrame:NSMakeRect(0, detailH - 1, W - sidebarW - 1, 1)] autorelease];
-    [hline setWantsLayer:YES];
-    [[hline layer] setBackgroundColor:[[NSColor blackColor] CGColor]];
-    [hline setAutoresizingMask:NSViewWidthSizable | NSViewMinYMargin];
-    [_detailView addSubview:hline];
+    // Glass hairline pair on the sheet's top edge (SDS-9 specular
+    // edge): ink hairline on the edge itself, and the shade strip
+    // directly beneath it — the sheet is paper, so the pair's second
+    // member steps one ramp tint down (a paper-bright strip would
+    // vanish on paper; the pair must read on the sheet's own tint).
+    DistroAddStrip(_detailView, NSMakeRect(0, detailH - 1, W - sidebarW - 1, 1),
+                   [NSColor blackColor], NSViewWidthSizable | NSViewMinYMargin);
+    DistroAddStrip(_detailView, NSMakeRect(0, detailH - 2, W - sidebarW - 1, 1),
+                   DistroDeepColor(), NSViewWidthSizable | NSViewMinYMargin);
     CGFloat dw = W - sidebarW - 1;
     _detailName = [DistroMakeLabel(@"", 15, YES, [NSColor blackColor]) retain];
     [_detailName setFrame:NSMakeRect(14, detailH - 34, 300, 20)];
@@ -283,6 +350,17 @@ enum {
     // Status word sits inside the title block, immediately after the
     // app name on the same baseline — distro-test-1 floated it at the
     // detail pane's far right edge, detached from the title.
+    // SDS-9: the status word rides in a capsule chip (panel fill,
+    // faint hairline border, radius = half the chip height), sized
+    // to the word in updateDetail.
+    _detailChip = [[NSView alloc] initWithFrame:NSMakeRect(314, detailH - 36, 90, 22)];
+    [_detailChip setWantsLayer:YES];
+    [[_detailChip layer] setCornerRadius:11.0];
+    [[_detailChip layer] setBorderWidth:1.0];
+    [[_detailChip layer] setBorderColor:[DistroFaintColor() CGColor]];
+    [[_detailChip layer] setBackgroundColor:[DistroPanelColor() CGColor]];
+    [_detailChip setHidden:YES];
+    [_detailView addSubview:_detailChip];
     _detailStatus = [DistroMakeLabel(@"", 11, NO, DistroMutedColor()) retain];
     [_detailStatus setFrame:NSMakeRect(322, detailH - 33, dw - 336, 18)];
     [_detailStatus setAlignment:NSTextAlignmentLeft];
@@ -733,6 +811,7 @@ enum {
     if (entry == nil) {
         [_detailName setStringValue:@""];
         [_detailStatus setStringValue:@""];
+        [_detailChip setHidden:YES];
         [_detailDescription setStringValue:
             [NSString stringWithFormat:@"Select an app to see its details. "
              @"Distro installs only software published by Detroit Automation "
@@ -749,6 +828,13 @@ enum {
     }
     [_detailName setStringValue:[entry name]];
     [_detailStatus setStringValue:[self statusWordForEntry:entry]];
+    // Size the SDS-9 capsule chip to the status word.
+    [_detailStatus sizeToFit];
+    NSRect statusFrame = [_detailStatus frame];
+    [_detailChip setFrame:NSMakeRect(NSMinX(statusFrame) - 8,
+                                     NSMinY(statusFrame) - 2,
+                                     NSWidth(statusFrame) + 16, 22)];
+    [_detailChip setHidden:NO];
     [_detailDescription setStringValue:[entry entryDescription]];
     NSDictionary *rec = [_records recordForID:[entry appID]];
     NSString *installedNote = @"";
