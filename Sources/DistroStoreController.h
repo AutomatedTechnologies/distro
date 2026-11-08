@@ -47,6 +47,16 @@
     NSProgressIndicator *_progress;
     id _selectedEntry;         // DistroAppEntry (retained via _entries)
     NSString *_busyAppID;
+
+    // Update All (J directive 2026-11-08): a sequential queue through
+    // the existing per-app update path — one operation at a time,
+    // every app keeping its own SHA-256 verification and audit gate.
+    NSButton *_updateAllButton;
+    NSMutableArray *_updateQueue;   // DistroAppEntry objects not yet started
+    NSMutableArray *_updatedNames;  // NSString outcomes for the summary
+    NSMutableArray *_failedLines;   // NSString outcomes ("name — reason")
+    NSInteger _queueTotal;
+    NSInteger _queueDone;           // 1-based position of the running item
 }
 
 - (id)initWithRecords:(DistroInstalledRecords *)records;
