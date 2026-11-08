@@ -32,6 +32,7 @@ static NSString *DistroStringValue(NSDictionary *dict, NSString *key, BOOL *pres
 @synthesize sourceURLString = _sourceURLString;
 @synthesize iconURLString = _iconURLString;
 @synthesize datePublished = _datePublished;
+@synthesize buildNotes = _buildNotes;
 
 - (void)dealloc {
     [_appID release];
@@ -49,6 +50,7 @@ static NSString *DistroStringValue(NSDictionary *dict, NSString *key, BOOL *pres
     [_sourceURLString release];
     [_iconURLString release];
     [_datePublished release];
+    [_buildNotes release];
     [super dealloc];
 }
 
@@ -102,6 +104,9 @@ static NSString *DistroStringValue(NSDictionary *dict, NSString *key, BOOL *pres
     entry.sourceURLString = DistroStringValue(dictionary, @"sourceURL", NULL);
     entry.iconURLString = DistroStringValue(dictionary, @"iconURL", NULL);
     entry.datePublished = DistroStringValue(dictionary, @"datePublished", NULL);
+    // Optional field: absent or null yields nil and the entry stays
+    // valid; older catalogs without it parse unchanged.
+    entry.buildNotes = DistroStringValue(dictionary, @"buildNotes", NULL);
     return entry;
 }
 
