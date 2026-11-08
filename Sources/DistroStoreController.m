@@ -735,7 +735,10 @@ enum {
         [_detailDescription setStringValue:
             [NSString stringWithFormat:@"Select an app to see its details. "
              @"Distro installs only software published by Detroit Automation "
-             @"Academy, and verifies every download by SHA-256 before install."]];
+             @"Academy, and verifies every download by SHA-256 before install. "
+             @"Disassembled. Scanned. Recompiled. Distro distributes only "
+             @"apps carrying the Academy audit entry in their plist — "
+             @"proof of the Academy pipeline."]];
         [_detailMeta setStringValue:@""];
         [_detailHash setStringValue:@""];
         [_detailCopyButton setEnabled:NO];
