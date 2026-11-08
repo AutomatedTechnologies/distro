@@ -68,6 +68,7 @@ static NSString *DistroStringValue(NSDictionary *dict, NSString *key, BOOL *pres
     NSString *status = DistroStringValue(dictionary, @"status", NULL);
     if (![status isEqualToString:@"released"] &&
         ![status isEqualToString:@"testing"] &&
+        ![status isEqualToString:@"release-candidate"] &&
         ![status isEqualToString:@"in-development"]) return nil;
 
     // Nullable fields: key must exist; value must be string-or-null
