@@ -212,7 +212,10 @@ enum {
 - (void)buildInterface {
     NSView *content = [[self window] contentView];
     CGFloat W = 1020, H = 660;
-    CGFloat statusH = 26, sidebarW = 210, detailH = 172;
+    // Detail pane grew 172 → 198 (2026-11-08, J directive): room for
+    // the build-notes line and the two-line meta block (incl. the
+    // Installed at: line) without clipping the description.
+    CGFloat statusH = 26, sidebarW = 210, detailH = 198;
 
     // SDS-9 layered tint depth: window ground = panel tint.
     DistroSetGround(content, DistroPanelColor());
@@ -381,12 +384,20 @@ enum {
     [_detailDescription setFrame:NSMakeRect(14, detailH - 92, dw - 28, 52)];
     [[_detailDescription cell] setWraps:YES];
     [_detailView addSubview:_detailDescription];
+    // Build notes for the catalog version (J directive 2026-11-08):
+    // rendered under the description when the entry carries them —
+    // the update flow is where they matter most.
+    _detailBuildNotes = [DistroMakeLabel(@"", 11, NO, DistroMutedColor()) retain];
+    [_detailBuildNotes setFrame:NSMakeRect(14, 80, dw - 28, 24)];
+    [[_detailBuildNotes cell] setWraps:YES];
+    [_detailView addSubview:_detailBuildNotes];
     _detailMeta = [DistroMakeLabel(@"", 11, NO, DistroMutedColor()) retain];
-    [_detailMeta setFrame:NSMakeRect(14, 62, dw - 28, 16)];
+    [_detailMeta setFrame:NSMakeRect(14, 48, dw - 28, 30)];
+    [[_detailMeta cell] setWraps:YES];
     [_detailView addSubview:_detailMeta];
     _detailHash = [DistroMakeLabel(@"", 11, NO, DistroMutedColor()) retain];
     [_detailHash setFont:[NSFont fontWithName:@"Menlo" size:11]];
-    [_detailHash setFrame:NSMakeRect(14, 38, 300, 16)];
+    [_detailHash setFrame:NSMakeRect(14, 26, 300, 16)];
     [_detailView addSubview:_detailHash];
     _detailCopyButton = [[NSButton alloc] initWithFrame:NSMakeRect(318, 34, 64, 22)];
     [_detailCopyButton setTitle:@"Copy"];
@@ -832,6 +843,7 @@ enum {
              @"Disassembled. Scanned. Recompiled. Distro distributes only "
              @"apps carrying the Academy audit entry in their plist — "
              @"proof of the Academy pipeline."]];
+        [_detailBuildNotes setStringValue:@""];
         [_detailMeta setStringValue:@""];
         [_detailHash setStringValue:@""];
         [_detailCopyButton setEnabled:NO];
@@ -840,6 +852,8 @@ enum {
         return;
     }
     [_detailName setStringValue:[entry name]];
+    [_detailBuildNotes setStringValue:
+        [entry buildNotes] != nil ? [entry buildNotes] : @""];
     [_detailStatus setStringValue:[self statusWordForEntry:entry]];
     // Size the SDS-9 capsule chip to the status word.
     [_detailStatus sizeToFit];
@@ -868,10 +882,19 @@ enum {
         installedNote = [NSString stringWithFormat:@" · Installed: %@",
             [rec objectForKey:@"version"]];
     }
-    [_detailMeta setStringValue:[NSString stringWithFormat:
+    NSString *metaText = [NSString stringWithFormat:
         @"Version %@ · Size %@ · License %@ · Requires macOS %@ · Publisher: Detroit Automation Academy%@",
         [entry version], [self formattedSize:[entry sizeBytes]], [entry license],
-        [entry minMacOS], installedNote]];
+        [entry minMacOS], installedNote];
+    // Installed file path (J directive 2026-11-08): shown only when
+    // this entry has an installed bundle on disk, as its own line.
+    NSString *installedPath = [rec objectForKey:@"bundlePath"];
+    if (installedPath != nil &&
+        [[NSFileManager defaultManager] fileExistsAtPath:installedPath]) {
+        metaText = [metaText stringByAppendingFormat:
+            @"\nInstalled at: %@", installedPath];
+    }
+    [_detailMeta setStringValue:metaText];
     if ([entry hasVerifiableHash]) {
         NSString *hash = [entry sha256];
         [_detailHash setStringValue:[NSString stringWithFormat:@"SHA-256: %@…",
