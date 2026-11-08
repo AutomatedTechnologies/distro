@@ -532,6 +532,7 @@ enum {
 
 - (NSString *)statusWordForEntry:(DistroAppEntry *)entry {
     if ([[entry status] isEqualToString:@"released"]) return @"Released";
+    if ([[entry status] isEqualToString:@"release-candidate"]) return @"Release candidate";
     if ([[entry status] isEqualToString:@"testing"]) return @"Test build";
     return @"In development";
 }
