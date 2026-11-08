@@ -65,12 +65,27 @@
                 sha256:(NSString *)sha256
                 format:(NSString *)format
             bundlePath:(NSString *)bundlePath {
+    [self setRecordForID:appID version:version sha256:sha256 format:format
+              bundlePath:bundlePath bundleID:nil bundleName:nil];
+}
+
+- (void)setRecordForID:(NSString *)appID
+               version:(NSString *)version
+                sha256:(NSString *)sha256
+                format:(NSString *)format
+            bundlePath:(NSString *)bundlePath
+              bundleID:(NSString *)bundleID
+            bundleName:(NSString *)bundleName {
     if (appID == nil) return;
     NSMutableDictionary *rec = [NSMutableDictionary dictionary];
     if (version != nil) [rec setObject:version forKey:@"version"];
     if (sha256 != nil) [rec setObject:sha256 forKey:@"sha256"];
     if (format != nil) [rec setObject:format forKey:@"format"];
     if (bundlePath != nil) [rec setObject:bundlePath forKey:@"bundlePath"];
+    if (bundleID != nil) [rec setObject:bundleID forKey:@"bundleID"];
+    if (bundleName != nil) [rec setObject:bundleName forKey:@"bundleName"];
+    [rec setObject:[NSNumber numberWithDouble:[[NSDate date] timeIntervalSince1970]]
+            forKey:@"installedAt"];
     [_records setObject:rec forKey:appID];
     [self save];
 }
