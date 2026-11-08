@@ -195,6 +195,20 @@
 			sourceTree = "<group>";
 		};
 
+		D15700000000000000000040 /* LICENSE-ACADEMY.txt */ = {
+			isa = PBXFileReference;
+			lastKnownFileType = text;
+			path = "LICENSE-ACADEMY.txt";
+			sourceTree = "<group>";
+		};
+
+		D15700000000000000000041 /* NOTICE.txt */ = {
+			isa = PBXFileReference;
+			lastKnownFileType = text;
+			path = "NOTICE.txt";
+			sourceTree = "<group>";
+		};
+
 		D1570000000000000000001C /* Distro.app */ = {
 			isa = PBXFileReference;
 			explicitFileType = wrapper.application;
@@ -289,6 +303,16 @@
 			fileRef = D1570000000000000000001A /* startup-sound.wav */;
 		};
 
+		D15700000000000000000042 /* LICENSE-ACADEMY.txt in Resources */ = {
+			isa = PBXBuildFile;
+			fileRef = D15700000000000000000040 /* LICENSE-ACADEMY.txt */;
+		};
+
+		D15700000000000000000043 /* NOTICE.txt in Resources */ = {
+			isa = PBXBuildFile;
+			fileRef = D15700000000000000000041 /* NOTICE.txt */;
+		};
+
 		D1570000000000000000002D /* AppKit.framework in Frameworks */ = {
 			isa = PBXBuildFile;
 			fileRef = D1570000000000000000001D /* AppKit.framework */;
@@ -316,7 +340,7 @@
 		D15700000000000000000031 /* Resources */ = {
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
-			files = (D1570000000000000000002A /* Distro.icns in Resources */, D1570000000000000000002B /* logo-mark.svg in Resources */, D1570000000000000000002C /* startup-sound.wav in Resources */);
+			files = (D1570000000000000000002A /* Distro.icns in Resources */, D1570000000000000000002B /* logo-mark.svg in Resources */, D1570000000000000000002C /* startup-sound.wav in Resources */, D15700000000000000000042 /* LICENSE-ACADEMY.txt in Resources */, D15700000000000000000043 /* NOTICE.txt in Resources */);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 
@@ -329,7 +353,7 @@
 
 		D15700000000000000000033 /* Resources */ = {
 			isa = PBXGroup;
-			children = (D15700000000000000000018 /* Distro.icns */, D15700000000000000000019 /* logo-mark.svg */, D1570000000000000000001A /* startup-sound.wav */, D1570000000000000000001B /* AppIcon.iconset */);
+			children = (D15700000000000000000018 /* Distro.icns */, D15700000000000000000019 /* logo-mark.svg */, D1570000000000000000001A /* startup-sound.wav */, D1570000000000000000001B /* AppIcon.iconset */, D15700000000000000000040 /* LICENSE-ACADEMY.txt */, D15700000000000000000041 /* NOTICE.txt */);
 			path = Resources;
 			sourceTree = "<group>";
 		};
