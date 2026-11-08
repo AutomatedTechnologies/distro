@@ -58,6 +58,20 @@ static NSTextField *DistroLabel(NSString *text, CGFloat size, BOOL bold, NSColor
         [[copyLine cell] setWraps:YES];
         [content addSubview:copyLine];
 
+        // Security tagline (J directive 2026-11-08): the acceptance
+        // rule stated where the user first meets the store. Sits in
+        // the open space between the copy line and Continue; no
+        // existing frame moves.
+        NSTextField *tagline = DistroLabel(
+            @"Disassembled. Scanned. Recompiled. Distro distributes only "
+            @"apps carrying the Academy audit entry in their plist — "
+            @"proof of the Academy pipeline.", 11.5, NO,
+            [NSColor colorWithCalibratedWhite:0.27 alpha:1.0]);
+        [tagline setFrame:NSMakeRect(50, NSMinY([copyLine frame]) - 58, w - 100, 44)];
+        [[tagline cell] setWraps:YES];
+        [tagline setAlignment:NSTextAlignmentCenter];
+        [content addSubview:tagline];
+
         NSButton *continueButton = [[[NSButton alloc]
             initWithFrame:NSMakeRect((w - 140) / 2, 44, 140, 32)] autorelease];
         [continueButton setTitle:@"Continue"];
