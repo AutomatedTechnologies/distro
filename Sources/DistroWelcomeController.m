@@ -4,6 +4,7 @@
 //
 
 #import "DistroWelcomeController.h"
+#import <QuartzCore/QuartzCore.h>
 #import "DistroLogoView.h"
 
 static NSTextField *DistroLabel(NSString *text, CGFloat size, BOOL bold, NSColor *color) {
@@ -18,6 +19,26 @@ static NSTextField *DistroLabel(NSString *text, CGFloat size, BOOL bold, NSColor
     [label setSelectable:NO];
     [label setAlignment:NSTextAlignmentCenter];
     return label;
+}
+
+// SDS-9 capsule for the sheet's primary control: the layer carries
+// the shape (paper fill, ink hairline border, radius = half the
+// height); the button cell draws only its title. Flat tints only.
+static void DistroWelcomeStyleCapsule(NSButton *button) {
+    [button setBordered:NO];
+    [button setWantsLayer:YES];
+    CALayer *layer = [button layer];
+    [layer setCornerRadius:NSHeight([button frame]) / 2.0];
+    [layer setBorderWidth:1.0];
+    [layer setBorderColor:[[NSColor blackColor] CGColor]];
+    [layer setBackgroundColor:[[NSColor colorWithCalibratedWhite:1.0 alpha:1.0] CGColor]];
+}
+
+static void DistroWelcomeAddStrip(NSView *parent, NSRect frame, NSColor *color) {
+    NSView *strip = [[[NSView alloc] initWithFrame:frame] autorelease];
+    [strip setWantsLayer:YES];
+    [[strip layer] setBackgroundColor:[color CGColor]];
+    [parent addSubview:strip];
 }
 
 @implementation DistroWelcomeController
@@ -36,6 +57,18 @@ static NSTextField *DistroLabel(NSString *text, CGFloat size, BOOL bold, NSColor
     if (self) {
         NSView *content = [window contentView];
         CGFloat w = NSWidth(frame);
+
+        // SDS-9 floating layer: the welcome sheet is paper, one tint
+        // step above the store ground, with the glass hairline pair
+        // on its top edge (ink hairline on the edge, shade strip
+        // beneath it — the pair's readable form on a paper sheet).
+        [content setWantsLayer:YES];
+        [[content layer] setBackgroundColor:
+            [[NSColor colorWithCalibratedWhite:1.0 alpha:1.0] CGColor]];
+        DistroWelcomeAddStrip(content, NSMakeRect(0, 519, w, 1),
+            [NSColor blackColor]);
+        DistroWelcomeAddStrip(content, NSMakeRect(0, 518, w, 1),
+            [NSColor colorWithCalibratedWhite:0.93 alpha:1.0]);
 
         DistroLogoView *logo = [[[DistroLogoView alloc]
             initWithFrame:NSMakeRect((w - 132) / 2, 520 - 60 - 132, 132, 132)] autorelease];
@@ -80,6 +113,8 @@ static NSTextField *DistroLabel(NSString *text, CGFloat size, BOOL bold, NSColor
         [continueButton setTarget:self];
         [continueButton setAction:@selector(continuePressed:)];
         [continueButton setKeyEquivalent:@"\r"];
+        // SDS-9 fluid geometry: the primary control is a capsule.
+        DistroWelcomeStyleCapsule(continueButton);
         [content addSubview:continueButton];
         // Monochrome standard (DAADV2/SDS): a window default button renders
         // blue (pulsing) on 10.13, so Continue is NOT set as the default
