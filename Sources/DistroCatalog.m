@@ -60,8 +60,23 @@ static NSString * const DistroCatalogErrorDomain = @"org.detroitautomationacadem
 }
 
 + (void)fetchCatalogFromURL:(NSURL *)url completion:(DistroCatalogCompletion)completion {
+    // Fresh-fetch guarantee (J directive 2026-11-08, "improve
+    // build"): an HTTP cache in front of GitHub Pages served a
+    // catalog copy ~57 minutes old (response Age: 3407) across
+    // Refreshes — the client, the repo, and the origin disagreed
+    // and the cache won silently. A per-fetch cache-busting query
+    // makes every cache layer miss (Pages resolves the file
+    // ignoring the query), and the request cache policy ignores
+    // the local cache as defense in depth. Refresh means fresh.
+    NSString *sep = ([[url query] length] > 0) ? @"&" : @"?";
+    NSURL *freshURL = [NSURL URLWithString:[NSString stringWithFormat:
+        @"%@%@t=%.0f", [url absoluteString], sep,
+        [[NSDate date] timeIntervalSince1970]]];
+    NSMutableURLRequest *request = [NSMutableURLRequest requestWithURL:freshURL
+        cachePolicy:NSURLRequestReloadIgnoringLocalCacheData
+        timeoutInterval:30];
     NSURLSessionDataTask *task =
-        [[NSURLSession sharedSession] dataTaskWithURL:url
+        [[NSURLSession sharedSession] dataTaskWithRequest:request
         completionHandler:^(NSData *data, NSURLResponse *response, NSError *error) {
             NSArray *entries = nil;
             NSError *resultError = error;
