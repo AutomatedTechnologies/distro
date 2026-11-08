@@ -22,6 +22,25 @@ static NSError *DistroInstallError(NSInteger code, NSString *message) {
                                              forKey:NSLocalizedDescriptionKey]];
 }
 
+// The Academy audit entry (acceptance rule, J directive 2026-11-08):
+// Distro accepts and distributes only apps whose Info.plist carries
+// the entry `com.detroitautomationacademy.audit` — a dictionary with
+// Disassembled, Scanned, and Recompiled all true — attesting the
+// build passed through the Academy pipeline (disassembled, scanned,
+// and recompiled under Academy authority). SHA-256 proves the bytes
+// are the catalogued bytes; this entry proves what the bytes ARE.
+// No entry, no install — here or in the UI.
+static BOOL DistroBundleCarriesAcademyAuditEntry(NSString *bundlePath) {
+    NSString *plistPath = [[bundlePath stringByAppendingPathComponent:@"Contents"]
+        stringByAppendingPathComponent:@"Info.plist"];
+    NSDictionary *info = [NSDictionary dictionaryWithContentsOfFile:plistPath];
+    id audit = [info objectForKey:@"com.detroitautomationacademy.audit"];
+    if (![audit isKindOfClass:[NSDictionary class]]) return NO;
+    return [[audit objectForKey:@"Disassembled"] boolValue] &&
+           [[audit objectForKey:@"Scanned"] boolValue] &&
+           [[audit objectForKey:@"Recompiled"] boolValue];
+}
+
 // Depth-first search (max depth 2 below root) for the first .app bundle.
 static NSString *DistroFindAppBundle(NSString *root) {
     NSFileManager *fm = [NSFileManager defaultManager];
@@ -155,6 +174,21 @@ static NSString *DistroFindAppBundle(NSString *root) {
         [fm removeItemAtPath:staging error:NULL];
         if (error) *error = DistroInstallError(14,
             @"The archive did not contain an application bundle (.app).");
+        return nil;
+    }
+
+    // Academy audit gate (acceptance rule, 2026-11-08): the bundle
+    // must carry the com.detroitautomationacademy.audit plist entry
+    // attesting it was disassembled, scanned, and recompiled by the
+    // Academy. Without it the install stops — nothing is installed.
+    if (!DistroBundleCarriesAcademyAuditEntry(bundle)) {
+        [fm removeItemAtPath:staging error:NULL];
+        if (error) *error = DistroInstallError(16,
+            @"Distro only distributes apps that carry the Academy audit "
+            @"entry (com.detroitautomationacademy.audit in the app's "
+            @"Info.plist — proof the build was disassembled, scanned, "
+            @"and recompiled by Detroit Automation Academy). This build "
+            @"does not carry it, so the install stopped. Nothing was installed.");
         return nil;
     }
 
