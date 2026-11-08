@@ -167,6 +167,9 @@ enum {
     [statusBar addSubview:_statusLabel];
     _progress = [[NSProgressIndicator alloc] initWithFrame:NSMakeRect(545, 5, 200, 16)];
     [_progress setStyle:NSProgressIndicatorBarStyle];
+    // Monochrome standard (DAADV2/SDS): the default control tint renders
+    // this bar blue on 10.13 — graphite keeps the rendered app grayscale.
+    [_progress setControlTint:NSGraphiteControlTint];
     [_progress setIndeterminate:NO];
     [_progress setMinValue:0];
     [_progress setMaxValue:1];
