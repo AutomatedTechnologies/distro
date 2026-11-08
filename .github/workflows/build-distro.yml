@@ -1,0 +1,88 @@
+name: Distro test build
+
+on:
+  push:
+    branches: [build-test]
+  workflow_dispatch:
+
+# The publish step creates a GitHub Release with GITHUB_TOKEN; the
+# KisMac line proved (run #13, 2026-11-07) that the default token
+# permissions on these repos do not include contents: write.
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: macos-15
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Select Xcode
+        run: |
+          xcodebuild -version
+          xcrun --show-sdk-path
+
+      - name: Build app icon (iconutil, from the committed iconset)
+        run: |
+          iconutil -c icns Resources/AppIcon.iconset -o Resources/Distro.icns
+          ls -la Resources/Distro.icns
+
+      - name: Build Distro (Release, unsigned, 10.13 floor)
+        run: |
+          set -o pipefail
+          xcodebuild -project Distro.xcodeproj -target Distro \
+            -configuration Release \
+            CODE_SIGNING_ALLOWED=NO \
+            MACOSX_DEPLOYMENT_TARGET=10.13 \
+            ARCHS=x86_64 ONLY_ACTIVE_ARCH=NO \
+            build 2>&1 | tee xcodebuild.log
+
+      - name: Upload build log
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: xcodebuild-log
+          path: xcodebuild.log
+
+      - name: Stamp build version and package app as zip
+        if: success()
+        run: |
+          APP=$(find ~/Library/Developer/Xcode/DerivedData -name 'Distro.app' | grep -v '\.dSYM' | head -1)
+          if [ -z "$APP" ]; then
+            APP=$(find . -name 'Distro.app' -path '*Release*' | head -1)
+          fi
+          echo "Built app: $APP"
+          test -n "$APP"
+          # Owner's standing fix (2026-11-07): stamp CFBundleVersion with
+          # the run-derived build id so installed copies are
+          # distinguishable. CFBundleShortVersionString stays 0.1.0.
+          /usr/libexec/PlistBuddy -c "Set :CFBundleVersion distro-test-${{ github.run_number }}" "$APP/Contents/Info.plist"
+          /usr/libexec/PlistBuddy -c "Print :CFBundleShortVersionString" "$APP/Contents/Info.plist"
+          /usr/libexec/PlistBuddy -c "Print :CFBundleVersion" "$APP/Contents/Info.plist"
+          /usr/libexec/PlistBuddy -c "Print :NSHumanReadableCopyright" "$APP/Contents/Info.plist"
+          /usr/libexec/PlistBuddy -c "Print :LSMinimumSystemVersion" "$APP/Contents/Info.plist"
+          ls -la "$APP/Contents/Resources/"
+          ditto -c -k --keepParent "$APP" Distro-test.zip
+          ls -la Distro-test.zip
+
+      - name: Upload test build zip (survival copy)
+        if: success()
+        uses: actions/upload-artifact@v4
+        with:
+          name: distro-test-zip
+          path: Distro-test.zip
+
+      - name: Publish prerelease with test build
+        if: success()
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          BUILT=$(date -u '+%Y-%m-%d %H:%M UTC')
+          NOTES="Internal test build of Distro, the Detroit Automation Academy application store for macOS High Sierra. Publisher: Detroit Automation Academy. Unsigned test build — not gate-cleared, not yet verified on the High Sierra rig.
+
+          BUILD STAMP — Built: $BUILT · Build: distro-test-${{ github.run_number }} (CI run ${{ github.run_id }}) · Agent: Forge · Authorized: J. Spencer Smith, directive of 2026-11-08 (prepare Distro MVP for download)"
+          gh release create distro-test-${{ github.run_number }} Distro-test.zip \
+            --prerelease \
+            --title "Distro test build ${{ github.run_number }}" \
+            --notes "$NOTES"

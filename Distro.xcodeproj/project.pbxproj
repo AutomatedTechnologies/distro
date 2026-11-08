@@ -1,0 +1,445 @@
+// !$*UTF8*$!
+{
+	archiveVersion = 1;
+	classes = {
+	};
+	objectVersion = 48;
+	objects = {
+
+		D15700000000000000000001 /* main.m */ = {
+			isa = PBXFileReference;
+			lastKnownFileType = sourcecode.c.objc;
+			path = main.m;
+			sourceTree = "<group>";
+		};
+
+		D15700000000000000000002 /* DistroAppDelegate.m */ = {
+			isa = PBXFileReference;
+			lastKnownFileType = sourcecode.c.objc;
+			path = DistroAppDelegate.m;
+			sourceTree = "<group>";
+		};
+
+		D15700000000000000000003 /* DistroStoreController.m */ = {
+			isa = PBXFileReference;
+			lastKnownFileType = sourcecode.c.objc;
+			path = DistroStoreController.m;
+			sourceTree = "<group>";
+		};
+
+		D15700000000000000000004 /* DistroWelcomeController.m */ = {
+			isa = PBXFileReference;
+			lastKnownFileType = sourcecode.c.objc;
+			path = DistroWelcomeController.m;
+			sourceTree = "<group>";
+		};
+
+		D15700000000000000000005 /* DistroLogoView.m */ = {
+			isa = PBXFileReference;
+			lastKnownFileType = sourcecode.c.objc;
+			path = DistroLogoView.m;
+			sourceTree = "<group>";
+		};
+
+		D15700000000000000000006 /* DistroDownloader.m */ = {
+			isa = PBXFileReference;
+			lastKnownFileType = sourcecode.c.objc;
+			path = DistroDownloader.m;
+			sourceTree = "<group>";
+		};
+
+		D15700000000000000000007 /* DistroInstaller.m */ = {
+			isa = PBXFileReference;
+			lastKnownFileType = sourcecode.c.objc;
+			path = DistroInstaller.m;
+			sourceTree = "<group>";
+		};
+
+		D15700000000000000000008 /* DistroInstalledRecords.m */ = {
+			isa = PBXFileReference;
+			lastKnownFileType = sourcecode.c.objc;
+			path = DistroInstalledRecords.m;
+			sourceTree = "<group>";
+		};
+
+		D15700000000000000000009 /* DistroCatalog.m */ = {
+			isa = PBXFileReference;
+			lastKnownFileType = sourcecode.c.objc;
+			path = DistroCatalog.m;
+			sourceTree = "<group>";
+		};
+
+		D1570000000000000000000A /* DistroAppEntry.m */ = {
+			isa = PBXFileReference;
+			lastKnownFileType = sourcecode.c.objc;
+			path = DistroAppEntry.m;
+			sourceTree = "<group>";
+		};
+
+		D1570000000000000000000B /* DistroVerifier.m */ = {
+			isa = PBXFileReference;
+			lastKnownFileType = sourcecode.c.objc;
+			path = DistroVerifier.m;
+			sourceTree = "<group>";
+		};
+
+		D1570000000000000000000C /* DistroAppDelegate.h */ = {
+			isa = PBXFileReference;
+			lastKnownFileType = sourcecode.c.h;
+			path = DistroAppDelegate.h;
+			sourceTree = "<group>";
+		};
+
+		D1570000000000000000000D /* DistroStoreController.h */ = {
+			isa = PBXFileReference;
+			lastKnownFileType = sourcecode.c.h;
+			path = DistroStoreController.h;
+			sourceTree = "<group>";
+		};
+
+		D1570000000000000000000E /* DistroWelcomeController.h */ = {
+			isa = PBXFileReference;
+			lastKnownFileType = sourcecode.c.h;
+			path = DistroWelcomeController.h;
+			sourceTree = "<group>";
+		};
+
+		D1570000000000000000000F /* DistroLogoView.h */ = {
+			isa = PBXFileReference;
+			lastKnownFileType = sourcecode.c.h;
+			path = DistroLogoView.h;
+			sourceTree = "<group>";
+		};
+
+		D15700000000000000000010 /* DistroDownloader.h */ = {
+			isa = PBXFileReference;
+			lastKnownFileType = sourcecode.c.h;
+			path = DistroDownloader.h;
+			sourceTree = "<group>";
+		};
+
+		D15700000000000000000011 /* DistroInstaller.h */ = {
+			isa = PBXFileReference;
+			lastKnownFileType = sourcecode.c.h;
+			path = DistroInstaller.h;
+			sourceTree = "<group>";
+		};
+
+		D15700000000000000000012 /* DistroInstalledRecords.h */ = {
+			isa = PBXFileReference;
+			lastKnownFileType = sourcecode.c.h;
+			path = DistroInstalledRecords.h;
+			sourceTree = "<group>";
+		};
+
+		D15700000000000000000013 /* DistroCatalog.h */ = {
+			isa = PBXFileReference;
+			lastKnownFileType = sourcecode.c.h;
+			path = DistroCatalog.h;
+			sourceTree = "<group>";
+		};
+
+		D15700000000000000000014 /* DistroAppEntry.h */ = {
+			isa = PBXFileReference;
+			lastKnownFileType = sourcecode.c.h;
+			path = DistroAppEntry.h;
+			sourceTree = "<group>";
+		};
+
+		D15700000000000000000015 /* DistroVerifier.h */ = {
+			isa = PBXFileReference;
+			lastKnownFileType = sourcecode.c.h;
+			path = DistroVerifier.h;
+			sourceTree = "<group>";
+		};
+
+		D15700000000000000000016 /* Info.plist */ = {
+			isa = PBXFileReference;
+			lastKnownFileType = text.plist.xml;
+			path = Info.plist;
+			sourceTree = "<group>";
+		};
+
+		D15700000000000000000017 /* Distro.xcconfig */ = {
+			isa = PBXFileReference;
+			lastKnownFileType = text.xcconfig;
+			path = Distro.xcconfig;
+			sourceTree = "<group>";
+		};
+
+		D15700000000000000000018 /* Distro.icns */ = {
+			isa = PBXFileReference;
+			lastKnownFileType = image.icns;
+			path = Distro.icns;
+			sourceTree = "<group>";
+		};
+
+		D15700000000000000000019 /* logo-mark.svg */ = {
+			isa = PBXFileReference;
+			lastKnownFileType = text;
+			path = "logo-mark.svg";
+			sourceTree = "<group>";
+		};
+
+		D1570000000000000000001A /* startup-sound.wav */ = {
+			isa = PBXFileReference;
+			lastKnownFileType = audio.wav;
+			path = "startup-sound.wav";
+			sourceTree = "<group>";
+		};
+
+		D1570000000000000000001B /* AppIcon.iconset */ = {
+			isa = PBXFileReference;
+			lastKnownFileType = folder.iconset;
+			path = AppIcon.iconset;
+			sourceTree = "<group>";
+		};
+
+		D1570000000000000000001C /* Distro.app */ = {
+			isa = PBXFileReference;
+			explicitFileType = wrapper.application;
+			includeInIndex = 0;
+			path = Distro.app;
+			sourceTree = BUILT_PRODUCTS_DIR;
+		};
+
+		D1570000000000000000001D /* AppKit.framework */ = {
+			isa = PBXFileReference;
+			lastKnownFileType = wrapper.framework;
+			name = AppKit.framework;
+			path = System/Library/Frameworks/AppKit.framework;
+			sourceTree = SDKROOT;
+		};
+
+		D1570000000000000000001E /* Foundation.framework */ = {
+			isa = PBXFileReference;
+			lastKnownFileType = wrapper.framework;
+			name = Foundation.framework;
+			path = System/Library/Frameworks/Foundation.framework;
+			sourceTree = SDKROOT;
+		};
+
+		D1570000000000000000001F /* main.m in Sources */ = {
+			isa = PBXBuildFile;
+			fileRef = D15700000000000000000001 /* main.m */;
+		};
+
+		D15700000000000000000020 /* DistroAppDelegate.m in Sources */ = {
+			isa = PBXBuildFile;
+			fileRef = D15700000000000000000002 /* DistroAppDelegate.m */;
+		};
+
+		D15700000000000000000021 /* DistroStoreController.m in Sources */ = {
+			isa = PBXBuildFile;
+			fileRef = D15700000000000000000003 /* DistroStoreController.m */;
+		};
+
+		D15700000000000000000022 /* DistroWelcomeController.m in Sources */ = {
+			isa = PBXBuildFile;
+			fileRef = D15700000000000000000004 /* DistroWelcomeController.m */;
+		};
+
+		D15700000000000000000023 /* DistroLogoView.m in Sources */ = {
+			isa = PBXBuildFile;
+			fileRef = D15700000000000000000005 /* DistroLogoView.m */;
+		};
+
+		D15700000000000000000024 /* DistroDownloader.m in Sources */ = {
+			isa = PBXBuildFile;
+			fileRef = D15700000000000000000006 /* DistroDownloader.m */;
+		};
+
+		D15700000000000000000025 /* DistroInstaller.m in Sources */ = {
+			isa = PBXBuildFile;
+			fileRef = D15700000000000000000007 /* DistroInstaller.m */;
+		};
+
+		D15700000000000000000026 /* DistroInstalledRecords.m in Sources */ = {
+			isa = PBXBuildFile;
+			fileRef = D15700000000000000000008 /* DistroInstalledRecords.m */;
+		};
+
+		D15700000000000000000027 /* DistroCatalog.m in Sources */ = {
+			isa = PBXBuildFile;
+			fileRef = D15700000000000000000009 /* DistroCatalog.m */;
+		};
+
+		D15700000000000000000028 /* DistroAppEntry.m in Sources */ = {
+			isa = PBXBuildFile;
+			fileRef = D1570000000000000000000A /* DistroAppEntry.m */;
+		};
+
+		D15700000000000000000029 /* DistroVerifier.m in Sources */ = {
+			isa = PBXBuildFile;
+			fileRef = D1570000000000000000000B /* DistroVerifier.m */;
+		};
+
+		D1570000000000000000002A /* Distro.icns in Resources */ = {
+			isa = PBXBuildFile;
+			fileRef = D15700000000000000000018 /* Distro.icns */;
+		};
+
+		D1570000000000000000002B /* logo-mark.svg in Resources */ = {
+			isa = PBXBuildFile;
+			fileRef = D15700000000000000000019 /* logo-mark.svg */;
+		};
+
+		D1570000000000000000002C /* startup-sound.wav in Resources */ = {
+			isa = PBXBuildFile;
+			fileRef = D1570000000000000000001A /* startup-sound.wav */;
+		};
+
+		D1570000000000000000002D /* AppKit.framework in Frameworks */ = {
+			isa = PBXBuildFile;
+			fileRef = D1570000000000000000001D /* AppKit.framework */;
+		};
+
+		D1570000000000000000002E /* Foundation.framework in Frameworks */ = {
+			isa = PBXBuildFile;
+			fileRef = D1570000000000000000001E /* Foundation.framework */;
+		};
+
+		D1570000000000000000002F /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (D1570000000000000000001F /* main.m in Sources */, D15700000000000000000020 /* DistroAppDelegate.m in Sources */, D15700000000000000000021 /* DistroStoreController.m in Sources */, D15700000000000000000022 /* DistroWelcomeController.m in Sources */, D15700000000000000000023 /* DistroLogoView.m in Sources */, D15700000000000000000024 /* DistroDownloader.m in Sources */, D15700000000000000000025 /* DistroInstaller.m in Sources */, D15700000000000000000026 /* DistroInstalledRecords.m in Sources */, D15700000000000000000027 /* DistroCatalog.m in Sources */, D15700000000000000000028 /* DistroAppEntry.m in Sources */, D15700000000000000000029 /* DistroVerifier.m in Sources */);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+
+		D15700000000000000000030 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (D1570000000000000000002D /* AppKit.framework in Frameworks */, D1570000000000000000002E /* Foundation.framework in Frameworks */);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+
+		D15700000000000000000031 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (D1570000000000000000002A /* Distro.icns in Resources */, D1570000000000000000002B /* logo-mark.svg in Resources */, D1570000000000000000002C /* startup-sound.wav in Resources */);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+
+		D15700000000000000000032 /* Sources */ = {
+			isa = PBXGroup;
+			children = (D15700000000000000000001 /* main.m */, D15700000000000000000002 /* DistroAppDelegate.m */, D15700000000000000000003 /* DistroStoreController.m */, D15700000000000000000004 /* DistroWelcomeController.m */, D15700000000000000000005 /* DistroLogoView.m */, D15700000000000000000006 /* DistroDownloader.m */, D15700000000000000000007 /* DistroInstaller.m */, D15700000000000000000008 /* DistroInstalledRecords.m */, D15700000000000000000009 /* DistroCatalog.m */, D1570000000000000000000A /* DistroAppEntry.m */, D1570000000000000000000B /* DistroVerifier.m */, D1570000000000000000000C /* DistroAppDelegate.h */, D1570000000000000000000D /* DistroStoreController.h */, D1570000000000000000000E /* DistroWelcomeController.h */, D1570000000000000000000F /* DistroLogoView.h */, D15700000000000000000010 /* DistroDownloader.h */, D15700000000000000000011 /* DistroInstaller.h */, D15700000000000000000012 /* DistroInstalledRecords.h */, D15700000000000000000013 /* DistroCatalog.h */, D15700000000000000000014 /* DistroAppEntry.h */, D15700000000000000000015 /* DistroVerifier.h */, D15700000000000000000016 /* Info.plist */);
+			path = Sources;
+			sourceTree = "<group>";
+		};
+
+		D15700000000000000000033 /* Resources */ = {
+			isa = PBXGroup;
+			children = (D15700000000000000000018 /* Distro.icns */, D15700000000000000000019 /* logo-mark.svg */, D1570000000000000000001A /* startup-sound.wav */, D1570000000000000000001B /* AppIcon.iconset */);
+			path = Resources;
+			sourceTree = "<group>";
+		};
+
+		D15700000000000000000034 /* Frameworks */ = {
+			isa = PBXGroup;
+			children = (D1570000000000000000001D /* AppKit.framework */, D1570000000000000000001E /* Foundation.framework */);
+			name = Frameworks;
+			sourceTree = "<group>";
+		};
+
+		D15700000000000000000035 /* Products */ = {
+			isa = PBXGroup;
+			children = (D1570000000000000000001C /* Distro.app */);
+			name = Products;
+			sourceTree = "<group>";
+		};
+
+		D15700000000000000000036 = {
+			isa = PBXGroup;
+			children = (D15700000000000000000032 /* Sources */, D15700000000000000000033 /* Resources */, D15700000000000000000034 /* Frameworks */, D15700000000000000000035 /* Products */, D15700000000000000000017 /* Distro.xcconfig */);
+			sourceTree = "<group>";
+		};
+
+		D15700000000000000000037 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			baseConfigurationReference = D15700000000000000000017 /* Distro.xcconfig */;
+			buildSettings = {
+			CODE_SIGNING_ALLOWED = NO;
+			INFOPLIST_FILE = Sources/Info.plist;
+			PRODUCT_BUNDLE_IDENTIFIER = com.detroitautomationacademy.distro;
+			PRODUCT_NAME = "$(TARGET_NAME)";
+			};
+			name = Debug;
+		};
+
+		D15700000000000000000038 /* Release */ = {
+			isa = XCBuildConfiguration;
+			baseConfigurationReference = D15700000000000000000017 /* Distro.xcconfig */;
+			buildSettings = {
+			CODE_SIGNING_ALLOWED = NO;
+			INFOPLIST_FILE = Sources/Info.plist;
+			PRODUCT_BUNDLE_IDENTIFIER = com.detroitautomationacademy.distro;
+			PRODUCT_NAME = "$(TARGET_NAME)";
+			};
+			name = Release;
+		};
+
+		D15700000000000000000039 /* Build configuration list for PBXNativeTarget "Distro" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (D15700000000000000000037 /* Debug */, D15700000000000000000038 /* Release */);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+
+		D1570000000000000000003A /* Distro */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = D15700000000000000000039 /* Build configuration list for PBXNativeTarget "Distro" */;
+			buildPhases = (D1570000000000000000002F /* Sources */, D15700000000000000000030 /* Frameworks */, D15700000000000000000031 /* Resources */);
+			buildRules = ();
+			dependencies = ();
+			name = Distro;
+			productName = Distro;
+			productReference = D1570000000000000000001C /* Distro.app */;
+			productType = "com.apple.product-type.application";
+		};
+
+		D1570000000000000000003B /* Debug */ = {
+			isa = XCBuildConfiguration;
+			baseConfigurationReference = D15700000000000000000017 /* Distro.xcconfig */;
+			buildSettings = {
+			ALWAYS_SEARCH_USER_PATHS = NO;
+			CLANG_ENABLE_OBJC_ARC = NO;
+			MACOSX_DEPLOYMENT_TARGET = 10.13;
+			};
+			name = Debug;
+		};
+
+		D1570000000000000000003C /* Release */ = {
+			isa = XCBuildConfiguration;
+			baseConfigurationReference = D15700000000000000000017 /* Distro.xcconfig */;
+			buildSettings = {
+			ALWAYS_SEARCH_USER_PATHS = NO;
+			CLANG_ENABLE_OBJC_ARC = NO;
+			MACOSX_DEPLOYMENT_TARGET = 10.13;
+			};
+			name = Release;
+		};
+
+		D1570000000000000000003D /* Build configuration list for PBXProject "Distro" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (D1570000000000000000003B /* Debug */, D1570000000000000000003C /* Release */);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+
+		D1570000000000000000003E /* Project object */ = {
+			isa = PBXProject;
+			attributes = { LastUpgradeCheck = 1010; ORGANIZATIONNAME = "Detroit Automation Academy"; TargetAttributes = { D1570000000000000000003A = { CreatedOnToolsVersion = 10.1; }; }; };
+			buildConfigurationList = D1570000000000000000003D /* Build configuration list for PBXProject "Distro" */;
+			compatibilityVersion = "Xcode 9.1";
+			developmentRegion = en;
+			hasScannedForEncodings = 0;
+			knownRegions = (en, Base);
+			mainGroup = D15700000000000000000036;
+			productRefGroup = D15700000000000000000035 /* Products */;
+			projectDirPath = "";
+			projectRoot = "";
+			targets = (D1570000000000000000003A /* Distro */);
+		};
+	};
+	rootObject = D1570000000000000000003E /* Project object */;
+}
