@@ -28,6 +28,7 @@
     NSString *_sourceURLString;
     NSString *_iconURLString;
     NSString *_datePublished;
+    NSString *_buildNotes;
 }
 
 // Schema fields (see charter §4). downloadURLString / sourceURLString /
@@ -48,6 +49,7 @@
 @property (nonatomic, copy) NSString *sourceURLString;
 @property (nonatomic, copy) NSString *iconURLString;
 @property (nonatomic, copy) NSString *datePublished;   // ISO-8601, nil iff no build exists
+@property (nonatomic, copy) NSString *buildNotes;      // optional (catalog 2026-11-08); nil when absent/null
 
 // Builds an entry from one catalog "apps" dictionary. Returns nil if any
 // required field is missing or of the wrong type; unknown fields are
