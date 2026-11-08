@@ -37,6 +37,22 @@
                 format:(NSString *)format
             bundlePath:(NSString *)bundlePath;
 
+// Extended record (bundle-collision correction, 2026-11-08): also
+// stores the installed bundle's identity (bundleID + bundleName, read
+// from the bundle's own Info.plist at install time) and the install
+// timestamp. Two catalog entries whose downloads contain the SAME
+// bundle identity (e.g. KisMac and the staged unified build, both
+// KisMac2.app / com.igrsoft.kismac) share one on-disk bundle; the
+// identity + timestamp are what let the store say which entry's
+// build actually owns that bundle now.
+- (void)setRecordForID:(NSString *)appID
+               version:(NSString *)version
+                sha256:(NSString *)sha256
+                format:(NSString *)format
+            bundlePath:(NSString *)bundlePath
+              bundleID:(NSString *)bundleID
+            bundleName:(NSString *)bundleName;
+
 // Drops a record and saves (uninstall).
 - (void)removeRecordForID:(NSString *)appID;
 
