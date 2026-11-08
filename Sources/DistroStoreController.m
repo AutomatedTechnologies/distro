@@ -111,7 +111,10 @@ enum {
     DistroStateGet,
     DistroStateUpdate,
     DistroStateOpen,
-    DistroStateInstalledPkg
+    DistroStateInstalledPkg,
+    DistroStateReplaced // bundle-collision correction (2026-11-08): this
+                        // entry's bundle is on disk, but a sibling entry
+                        // sharing the bundle identity owns it now
 };
 
 @implementation DistroStoreController
@@ -409,7 +412,10 @@ enum {
         if ([_activeFilter isEqualToString:@"all"]) {
             show = YES;
         } else if ([_activeFilter isEqualToString:@"installed"]) {
-            show = [_records isInstalled:[entry appID]];
+            // Honest Installed list: a replaced entry is not installed
+            // (its sibling's build owns the shared bundle).
+            NSInteger st = [self stateForEntry:entry];
+            show = (st == DistroStateOpen || st == DistroStateInstalledPkg);
         } else if ([_activeFilter isEqualToString:@"updates"]) {
             show = [_records hasUpdateForID:[entry appID] catalogSHA256:[entry sha256]];
         } else {
@@ -431,6 +437,75 @@ enum {
 
 #pragma mark - App state
 
+// Bundle-collision correction (2026-11-08, record files/05): two
+// catalog entries can ship the SAME bundle identity — KisMac and the
+// staged unified build both install KisMac2.app (com.igrsoft.kismac).
+// One on-disk bundle can be only one entry's build: the one installed
+// most recently. Identity is read from the records (bundlePath, or
+// bundleID when both records carry it), never from catalog copy.
+
+// The catalog entry for an app id, or nil.
+- (DistroAppEntry *)entryForAppID:(NSString *)appID {
+    for (DistroAppEntry *candidate in _entries) {
+        if ([[candidate appID] isEqualToString:appID]) return candidate;
+    }
+    return nil;
+}
+
+// YES when records A and B describe the same installed bundle.
+- (BOOL)record:(NSDictionary *)a sharesBundleWithRecord:(NSDictionary *)b {
+    NSString *pathA = [a objectForKey:@"bundlePath"];
+    NSString *pathB = [b objectForKey:@"bundlePath"];
+    if (pathA != nil && [pathA isEqualToString:pathB]) return YES;
+    NSString *idA = [a objectForKey:@"bundleID"];
+    NSString *idB = [b objectForKey:@"bundleID"];
+    return idA != nil && [idA isEqualToString:idB];
+}
+
+// When another entry's record owns this entry's bundle (same identity,
+// installed later), returns that entry; nil when this entry owns its
+// bundle or has none. The bundle must still exist on disk.
+- (DistroAppEntry *)bundleOwnerOtherThan:(DistroAppEntry *)entry {
+    NSDictionary *mine = [_records recordForID:[entry appID]];
+    if (mine == nil) return nil;
+    NSString *bundlePath = [mine objectForKey:@"bundlePath"];
+    if (bundlePath == nil ||
+        ![[NSFileManager defaultManager] fileExistsAtPath:bundlePath]) {
+        return nil;
+    }
+    double myTime = [[mine objectForKey:@"installedAt"] doubleValue];
+    DistroAppEntry *owner = nil;
+    for (NSString *otherID in [_records installedIDs]) {
+        if ([otherID isEqualToString:[entry appID]]) continue;
+        NSDictionary *other = [_records recordForID:otherID];
+        if (other == nil) continue;
+        if (![self record:mine sharesBundleWithRecord:other]) continue;
+        if ([[other objectForKey:@"installedAt"] doubleValue] >= myTime) {
+            DistroAppEntry *candidate = [self entryForAppID:otherID];
+            if (candidate != nil) owner = candidate;
+        }
+    }
+    return owner;
+}
+
+// The bundle identity a path holds on disk right now, read from its
+// own Info.plist: {bundleID, name, version} (any may be missing).
+- (NSDictionary *)diskIdentityForBundleAtPath:(NSString *)bundlePath {
+    NSString *plistPath = [[bundlePath stringByAppendingPathComponent:@"Contents"]
+        stringByAppendingPathComponent:@"Info.plist"];
+    NSDictionary *info = [NSDictionary dictionaryWithContentsOfFile:plistPath];
+    if (info == nil) return nil;
+    NSMutableDictionary *identity = [NSMutableDictionary dictionary];
+    NSString *bid = [info objectForKey:@"CFBundleIdentifier"];
+    if (bid != nil) [identity setObject:bid forKey:@"bundleID"];
+    NSString *name = [info objectForKey:@"CFBundleName"];
+    if (name == nil) name = [[bundlePath lastPathComponent] stringByDeletingPathExtension];
+    [identity setObject:name forKey:@"name"];
+    NSString *version = [info objectForKey:@"CFBundleShortVersionString"];
+    if (version != nil) [identity setObject:version forKey:@"version"];
+    return identity;
+}
+
 - (NSInteger)stateForEntry:(DistroAppEntry *)entry {
     if (![entry isInstallable]) return DistroStateComingSoon;
     NSDictionary *rec = [_records recordForID:[entry appID]];
@@ -444,6 +519,12 @@ enum {
     NSString *bundlePath = [rec objectForKey:@"bundlePath"];
     if (bundlePath != nil &&
         [[NSFileManager defaultManager] fileExistsAtPath:bundlePath]) {
+        // The bundle is on disk — but it may be a sibling entry's
+        // build of the same bundle. Only the owning entry may read
+        // Open; the replaced entry reads Get and says so in detail.
+        if ([self bundleOwnerOtherThan:entry] != nil) {
+            return DistroStateReplaced;
+        }
         return DistroStateOpen;
     }
     return DistroStateGet; // record exists but the bundle is gone
@@ -520,6 +601,10 @@ enum {
             [button setTitle:@"Update"]; [button setEnabled:YES]; break;
         case DistroStateOpen:
             [button setTitle:@"Open"]; [button setEnabled:YES]; break;
+        case DistroStateReplaced:
+            // Never "Open"/"Installed" for a replaced entry: Get is
+            // the honest action — it restores this entry's build.
+            [button setTitle:@"Get"]; [button setEnabled:YES]; break;
         case DistroStateInstalledPkg:
             [button setTitle:@"Installed"]; [button setEnabled:NO]; break;
         default:
@@ -663,7 +748,20 @@ enum {
     [_detailDescription setStringValue:[entry entryDescription]];
     NSDictionary *rec = [_records recordForID:[entry appID]];
     NSString *installedNote = @"";
-    if (rec != nil) {
+    DistroAppEntry *bundleOwner = nil;
+    if (rec != nil &&
+        [[rec objectForKey:@"sha256"] isEqualToString:[entry sha256]] &&
+        ![[rec objectForKey:@"format"] isEqualToString:@"pkg"]) {
+        bundleOwner = [self bundleOwnerOtherThan:entry];
+    }
+    if (bundleOwner != nil) {
+        // Language of the correction: name what is actually on disk.
+        NSString *bundleName = [rec objectForKey:@"bundleName"];
+        if (bundleName == nil) bundleName = @"the shared bundle";
+        installedNote = [NSString stringWithFormat:
+            @" · Replaced by %@ — the installed %@ is the %@ build",
+            [bundleOwner name], bundleName, [bundleOwner name]];
+    } else if (rec != nil) {
         installedNote = [NSString stringWithFormat:@" · Installed: %@",
             [rec objectForKey:@"version"]];
     }
@@ -681,7 +779,9 @@ enum {
         [_detailCopyButton setEnabled:NO];
     }
     [_detailSourceButton setEnabled:[entry sourceURL] != nil];
-    [_detailUninstallButton setEnabled:rec != nil];
+    // A replaced entry must not uninstall its sibling's bundle: the
+    // on-disk bundle belongs to the owning entry's record.
+    [_detailUninstallButton setEnabled:(rec != nil && bundleOwner == nil)];
 }
 
 - (void)copyHashPressed:(id)sender {
@@ -750,14 +850,45 @@ enum {
     if (state == DistroStateOpen) {
         NSDictionary *rec = [_records recordForID:[entry appID]];
         NSString *bundlePath = [rec objectForKey:@"bundlePath"];
-        if (bundlePath != nil) {
-            [[NSWorkspace sharedWorkspace] launchApplicationAtURL:
-                [NSURL fileURLWithPath:bundlePath]
-                options:0 configuration:[NSDictionary dictionary] error:NULL];
+        if (bundlePath == nil) return;
+        // Verify before opening (correction, 2026-11-08): read the
+        // bundle's identity from disk and check it against what this
+        // entry recorded. If a sibling entry shares the bundle, say
+        // which build is actually being opened — this entry's own,
+        // because stateForEntry only returns Open for the owner.
+        NSDictionary *identity = [self diskIdentityForBundleAtPath:bundlePath];
+        NSString *recordedID = [rec objectForKey:@"bundleID"];
+        NSString *diskID = [identity objectForKey:@"bundleID"];
+        if (recordedID != nil && diskID != nil &&
+            ![recordedID isEqualToString:diskID]) {
+            [self showAlertText:@"Not opening"
+                        message:[NSString stringWithFormat:
+                @"The bundle at %@ identifies as %@, not the %@ build "
+                @"Distro recorded for %@. It will not be opened as %@.",
+                bundlePath, diskID, [entry name], [entry name], [entry name]]];
+            return;
+        }
+        [[NSWorkspace sharedWorkspace] launchApplicationAtURL:
+            [NSURL fileURLWithPath:bundlePath]
+            options:0 configuration:[NSDictionary dictionary] error:NULL];
+        // If any other entry's record shares this bundle identity,
+        // the status line names the build that was just opened.
+        for (NSString *otherID in [_records installedIDs]) {
+            if ([otherID isEqualToString:[entry appID]]) continue;
+            NSDictionary *other = [_records recordForID:otherID];
+            if (other != nil && [self record:rec sharesBundleWithRecord:other]) {
+                DistroAppEntry *sibling = [self entryForAppID:otherID];
+                [self setStatus:[NSString stringWithFormat:
+                    @"Opened %@ — the %@ build (%@). This bundle is shared with %@.",
+                    [identity objectForKey:@"name"], [entry name], [entry version],
+                    sibling != nil ? [sibling name] : otherID]];
+                break;
+            }
         }
         return;
     }
-    if (state != DistroStateGet && state != DistroStateUpdate) return;
+    if (state != DistroStateGet && state != DistroStateUpdate &&
+        state != DistroStateReplaced) return;
     if (![_downloader startDownloadForEntry:entry]) {
         [self setStatus:@"Another download is already in progress."];
         return;
@@ -818,11 +949,17 @@ enum {
             if ([format isEqualToString:@"pkg"]) {
                 [selfRef confirmPkgInstallForEntry:entry];
             } else {
+                NSString *installedPath =
+                    [result objectForKey:DistroInstallResultBundlePathKey];
+                NSDictionary *identity =
+                    [selfRef diskIdentityForBundleAtPath:installedPath];
                 [selfRef->_records setRecordForID:[entry appID]
                                           version:[entry version]
                                            sha256:[entry sha256]
                                            format:@"app"
-                                       bundlePath:[result objectForKey:DistroInstallResultBundlePathKey]];
+                                       bundlePath:installedPath
+                                         bundleID:[identity objectForKey:@"bundleID"]
+                                       bundleName:[identity objectForKey:@"name"]];
                 [selfRef setStatus:[NSString stringWithFormat:@"%@ installed.", [entry name]]];
                 [selfRef rebuildSidebarAndReload];
                 [selfRef updateDetail];
