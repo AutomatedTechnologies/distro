@@ -5,6 +5,12 @@
 //  Verify-then-install (charter §5/§6). Every install begins with the
 //  size + SHA-256 check via DistroVerifier; a mismatch deletes the
 //  downloaded file and stops — there is no override, here or in the UI.
+//  App bundles face a second gate (acceptance rule, 2026-11-08): the
+//  bundle's Info.plist must carry the Academy audit entry
+//  (com.detroitautomationacademy.audit — Disassembled, Scanned, and
+//  Recompiled all true). SHA-256 proves the bytes are the catalogued
+//  bytes; the audit entry proves the build passed the Academy
+//  pipeline. No entry, no install.
 //
 //    .zip -> ditto-unzip (NSTask, no shell) -> find the .app -> move it
 //            to /Applications when writable, else ~/Applications; an
