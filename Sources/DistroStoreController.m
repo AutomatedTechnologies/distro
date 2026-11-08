@@ -161,6 +161,10 @@ enum {
     DistroStateUpdate,
     DistroStateOpen,
     DistroStateInstalledPkg,
+    DistroStateRunning, // self entry (J directive 2026-11-08): the
+                        // running app's own entry, installed and
+                        // current — its own class, separate from
+                        // Get / Open / Update / Coming Soon.
     DistroStateReplaced // bundle-collision correction (2026-11-08): this
                         // entry's bundle is on disk, but a sibling entry
                         // sharing the bundle identity owns it now
@@ -517,7 +521,8 @@ enum {
             // Honest Installed list: a replaced entry is not installed
             // (its sibling's build owns the shared bundle).
             NSInteger st = [self stateForEntry:entry];
-            show = (st == DistroStateOpen || st == DistroStateInstalledPkg);
+            show = (st == DistroStateOpen || st == DistroStateInstalledPkg ||
+                    st == DistroStateRunning);
         } else if ([_activeFilter isEqualToString:@"updates"]) {
             show = [_records hasUpdateForID:[entry appID] catalogSHA256:[entry sha256]];
         } else {
@@ -627,6 +632,16 @@ enum {
         if ([self bundleOwnerOtherThan:entry] != nil) {
             return DistroStateReplaced;
         }
+        // Self entry (J directive 2026-11-08): when the bundle on
+        // disk IS the running app, the row is the app in use — its
+        // own class, not Open. A pending self-update never reaches
+        // here: the sha comparison above returns Update first, so
+        // self-update stays governed by the version comparison.
+        NSDictionary *identity = [self diskIdentityForBundleAtPath:bundlePath];
+        if ([[identity objectForKey:@"bundleID"] isEqualToString:
+                [[NSBundle mainBundle] bundleIdentifier]]) {
+            return DistroStateRunning;
+        }
         return DistroStateOpen;
     }
     return DistroStateGet; // record exists but the bundle is gone
@@ -710,6 +725,10 @@ enum {
             [button setTitle:@"Get"]; [button setEnabled:YES]; break;
         case DistroStateInstalledPkg:
             [button setTitle:@"Installed"]; [button setEnabled:NO]; break;
+        case DistroStateRunning:
+            // The app in use (J directive 2026-11-08): its own
+            // class — distinct label, no action.
+            [button setTitle:@"Running"]; [button setEnabled:NO]; break;
         default:
             [button setTitle:@"Coming Soon"]; [button setEnabled:NO]; break;
     }
