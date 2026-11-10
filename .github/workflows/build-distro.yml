@@ -46,7 +46,7 @@ jobs:
           [ "$A_SHA" = "$M_SHA" ] || { echo "HALT: snapshot SHA-256 != manifest SHA-256"; exit 1; }
           [ "$A_SHA" = "$REGISTRY_SNAPSHOT_SHA256" ] || { echo "HALT: snapshot SHA-256 != pinned SHA-256"; exit 1; }
           [ "$A_SIZE" = "$M_SIZE" ] || { echo "HALT: snapshot size != manifest size"; exit 1; }
-          Q() { sqlite3 "file:$RUNNER_TEMP/registry.db?mode=ro" "$1"; }
+          Q() { sqlite3 -readonly "$RUNNER_TEMP/registry.db" "$1"; }
           # Version assignment — the next tag is assigned by query against
           # the builds history, not by CI run numbering.
           ASSIGNED_TAG=$(Q "SELECT 'distro-test-' || (MAX(CAST(substr(tag, 13) AS INTEGER)) + 1) FROM builds WHERE app_id = 'distro' AND tag GLOB 'distro-test-*';")
