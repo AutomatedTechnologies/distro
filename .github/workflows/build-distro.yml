@@ -24,10 +24,10 @@ permissions:
 # below were set by the reviewed workflow change that converted this
 # pipeline (V5-T6 pilot, 2026-11-10). Builds never resolve "latest".
 env:
-  REGISTRY_SNAPSHOT_VERSION: v6-0016
-  REGISTRY_SNAPSHOT_SHA256: 4c272421a41cb09b8b8012b163faca7e654ffb2956a720383ace9be56ec95e57
-  REGISTRY_MANIFEST_URL: https://detroitautomationacademy.com/registry/v6-0016/registry-manifest.json
-  REGISTRY_SNAPSHOT_URL: https://detroitautomationacademy.com/registry/v6-0016/registry.db
+  REGISTRY_SNAPSHOT_VERSION: v6-0018
+  REGISTRY_SNAPSHOT_SHA256: 1f5f8be1ebbfdf67d141e06e306768cd1cb9e00efccdb795c5e1f179594de1ff
+  REGISTRY_MANIFEST_URL: https://detroitautomationacademy.com/registry/v6-0018/registry-manifest.json
+  REGISTRY_SNAPSHOT_URL: https://detroitautomationacademy.com/registry/v6-0018/registry.db
 
 jobs:
   build:
@@ -174,7 +174,7 @@ jobs:
 
           BUILD STAMP — Built: $BUILT · Build: $ASSIGNED_TAG (CI run ${{ github.run_id }}) · Agent: Forge · Authorized: J. Spencer Smith, $STAMP_DIRECTIVE
 
-          Registry snapshot: sha256:$REGISTRY_SNAPSHOT_SHA256 · schema v6 · ledger changes/0016 · manifest $REGISTRY_MANIFEST_URL"
+          Registry snapshot: sha256:$REGISTRY_SNAPSHOT_SHA256 · schema v6 · ledger changes/0018 · manifest $REGISTRY_MANIFEST_URL"
           if [ -n "${{ inputs.version_override }}" ]; then
             gh release delete "$ASSIGNED_TAG" --yes --cleanup-tag || true
           fi
