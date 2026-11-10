@@ -52,8 +52,15 @@
 
 #pragma mark - Menu
 
+// The menu bar (J directive 2026-11-10 16:31 EST; SDS-10 10.4): app
+// menu (About — whose panel shows the runtime version — Reload
+// Catalog, Quit ⌘Q), Window, and Help; every item wired to a working
+// action. No Edit menu: the app has no editable text field anywhere
+// (the store filters by sidebar selection; every text field is a
+// label), so Edit items would be permanently dead.
 - (void)buildMenu {
     NSMenu *mainMenu = [[[NSMenu alloc] initWithTitle:@"MainMenu"] autorelease];
+
     NSMenuItem *appMenuItem = [[[NSMenuItem alloc] init] autorelease];
     [mainMenu addItem:appMenuItem];
     NSMenu *appMenu = [[[NSMenu alloc] initWithTitle:@"Distro"] autorelease];
@@ -64,13 +71,81 @@
     [about setTarget:self];
     [appMenu addItem:about];
     [appMenu addItem:[NSMenuItem separatorItem]];
+    NSMenuItem *reload = [[[NSMenuItem alloc]
+        initWithTitle:@"Reload Catalog"
+               action:@selector(reloadCatalog:)
+        keyEquivalent:@"r"] autorelease];
+    [reload setTarget:self];
+    [appMenu addItem:reload];
+    [appMenu addItem:[NSMenuItem separatorItem]];
     NSMenuItem *quit = [[[NSMenuItem alloc]
         initWithTitle:@"Quit Distro"
                action:@selector(terminate:)
         keyEquivalent:@"q"] autorelease];
     [appMenu addItem:quit];
     [appMenuItem setSubmenu:appMenu];
+
+    NSMenuItem *windowMenuItem = [[[NSMenuItem alloc] init] autorelease];
+    [mainMenu addItem:windowMenuItem];
+    NSMenu *windowMenu = [[[NSMenu alloc] initWithTitle:@"Window"] autorelease];
+    [windowMenu addItem:[[[NSMenuItem alloc]
+        initWithTitle:@"Minimize"
+               action:@selector(performMiniaturize:)
+        keyEquivalent:@"m"] autorelease]];
+    [windowMenu addItem:[[[NSMenuItem alloc]
+        initWithTitle:@"Zoom"
+               action:@selector(zoom:)
+        keyEquivalent:@""] autorelease]];
+    [windowMenu addItem:[NSMenuItem separatorItem]];
+    [windowMenu addItem:[[[NSMenuItem alloc]
+        initWithTitle:@"Close Window"
+               action:@selector(performClose:)
+        keyEquivalent:@"w"] autorelease]];
+    [windowMenuItem setSubmenu:windowMenu];
+    [NSApp setWindowsMenu:windowMenu];
+
+    NSMenuItem *helpMenuItem = [[[NSMenuItem alloc] init] autorelease];
+    [mainMenu addItem:helpMenuItem];
+    NSMenu *helpMenu = [[[NSMenu alloc] initWithTitle:@"Help"] autorelease];
+    NSMenuItem *help = [[[NSMenuItem alloc]
+        initWithTitle:@"Distro Help"
+               action:@selector(showHelp:)
+        keyEquivalent:@""] autorelease];
+    [help setTarget:self];
+    [helpMenu addItem:help];
+    NSMenuItem *site = [[[NSMenuItem alloc]
+        initWithTitle:@"Detroit Automation Academy Website"
+               action:@selector(showAcademySite:)
+        keyEquivalent:@""] autorelease];
+    [site setTarget:self];
+    [helpMenu addItem:site];
+    [helpMenuItem setSubmenu:helpMenu];
+    [NSApp setHelpMenu:helpMenu];
+
     [NSApp setMainMenu:mainMenu];
+}
+
+// Reload Catalog is live only once the store exists; before Continue
+// there is no catalog session to reload.
+- (BOOL)validateMenuItem:(NSMenuItem *)menuItem {
+    if ([menuItem action] == @selector(reloadCatalog:)) {
+        return _storeController != nil;
+    }
+    return YES;
+}
+
+- (void)reloadCatalog:(id)sender {
+    [_storeController loadCatalog];
+}
+
+- (void)showHelp:(id)sender {
+    [[NSWorkspace sharedWorkspace] openURL:
+        [NSURL URLWithString:@"https://detroitautomationacademy.com/store/"]];
+}
+
+- (void)showAcademySite:(id)sender {
+    [[NSWorkspace sharedWorkspace] openURL:
+        [NSURL URLWithString:@"https://detroitautomationacademy.com/"]];
 }
 
 #pragma mark - About panel (DAAD signature surface)
