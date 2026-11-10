@@ -4,6 +4,12 @@ on:
   push:
     branches: [build-test]
   workflow_dispatch:
+    inputs:
+      version_override:
+        description: "Owner-directed tag override (superseding rebuild of an existing tag; blank = registry query assigns)"
+        required: false
+        default: ""
+        type: string
 
 # The publish step creates a GitHub Release with GITHUB_TOKEN; the
 # KisMac line proved (run #13, 2026-11-07) that the default token
@@ -18,10 +24,10 @@ permissions:
 # below were set by the reviewed workflow change that converted this
 # pipeline (V5-T6 pilot, 2026-11-10). Builds never resolve "latest".
 env:
-  REGISTRY_SNAPSHOT_VERSION: v6-0014
-  REGISTRY_SNAPSHOT_SHA256: 5ed663645be558f7aa8850f2910d4515ab71ebde5e4633e9e7e1396bae414e05
-  REGISTRY_MANIFEST_URL: https://detroitautomationacademy.com/registry/v6-0014/registry-manifest.json
-  REGISTRY_SNAPSHOT_URL: https://detroitautomationacademy.com/registry/v6-0014/registry.db
+  REGISTRY_SNAPSHOT_VERSION: v6-0016
+  REGISTRY_SNAPSHOT_SHA256: 4c272421a41cb09b8b8012b163faca7e654ffb2956a720383ace9be56ec95e57
+  REGISTRY_MANIFEST_URL: https://detroitautomationacademy.com/registry/v6-0016/registry-manifest.json
+  REGISTRY_SNAPSHOT_URL: https://detroitautomationacademy.com/registry/v6-0016/registry.db
 
 jobs:
   build:
@@ -51,7 +57,18 @@ jobs:
           # the builds history, not by CI run numbering.
           ASSIGNED_TAG=$(Q "SELECT 'distro-test-' || (MAX(CAST(substr(tag, 13) AS INTEGER)) + 1) FROM builds WHERE app_id = 'distro' AND tag GLOB 'distro-test-*';")
           COLLIDES=$(Q "SELECT COUNT(*) FROM builds WHERE app_id = 'distro' AND tag = '$ASSIGNED_TAG';")
-          [ "$COLLIDES" = "0" ] || { echo "HALT: assigned tag $ASSIGNED_TAG already exists in builds"; exit 1; }
+          OVERRIDE="${{ inputs.version_override }}"
+          if [ -n "$OVERRIDE" ]; then
+            # Owner-directed superseding rebuild (J directive 2026-11-10
+            # 16:31 EST): the tag is named by the owner, not assigned;
+            # the collision check is the contract's guard against
+            # accidental reuse and does not apply to a directed
+            # supersede of the same tag.
+            echo "version override in effect: $OVERRIDE (supersedes the same-tagged build)"
+            ASSIGNED_TAG="$OVERRIDE"
+          else
+            [ "$COLLIDES" = "0" ] || { echo "HALT: assigned tag $ASSIGNED_TAG already exists in builds"; exit 1; }
+          fi
           # Branding metadata + catalog position + audit state of record.
           DISPLAY_NAME=$(Q "SELECT display_name FROM apps WHERE id = 'distro';")
           BUNDLE_ID=$(Q "SELECT bundle_id FROM apps WHERE id = 'distro';")
@@ -72,6 +89,13 @@ jobs:
             echo "MIN_MACOS=$MIN_MACOS"
             echo "CATALOG_STATUS=$CATALOG_STATUS"
             echo "CURRENT_TAG=$CURRENT_TAG"
+            if [ -n "$OVERRIDE" ]; then
+              echo "SUPERSEDE_LINE=Supersedes the earlier $CURRENT_TAG build of the same tag (icon unification only); this build carries the full three-item spec."
+              echo "STAMP_DIRECTIVE=directive of 2026-11-10 (distro-test-40 superseding build: icon unification + version on the SDS-8 welcome screen + functional menu bar; app development at Priority 0)"
+            else
+              echo "SUPERSEDE_LINE=Supersedes $CURRENT_TAG, whose registry audit state is complete (Disassembled, Scanned, Recompiled — the bundle-carried Academy audit entry, Distro files/08 rule); this build carries the same audit entry in its Info.plist."
+              echo "STAMP_DIRECTIVE=directive of 2026-11-10 (icon unification — the Dock icon is the app icon on every surface; app development at Priority 0)"
+            fi
           } >> "$GITHUB_ENV"
           echo "Registry facts (snapshot $REGISTRY_SNAPSHOT_VERSION, sha256 $A_SHA): tag=$ASSIGNED_TAG name=$DISPLAY_NAME bundle=$BUNDLE_ID status=$CATALOG_STATUS current=$CURRENT_TAG audit=$AUDIT_FLAGS"
 
@@ -146,11 +170,14 @@ jobs:
           # the verified snapshot above. No hand-kept draft exists.
           NOTES="$TAGLINE
 
-          Publisher: Detroit Automation Academy. Catalog status: $CATALOG_STATUS. Floor: macOS $MIN_MACOS. Unsigned test build — not gate-cleared, not yet verified on the High Sierra rig. Supersedes $CURRENT_TAG, whose registry audit state is complete (Disassembled, Scanned, Recompiled — the bundle-carried Academy audit entry, Distro files/08 rule); this build carries the same audit entry in its Info.plist.
+          Publisher: Detroit Automation Academy. Catalog status: $CATALOG_STATUS. Floor: macOS $MIN_MACOS. Unsigned test build — not gate-cleared, not yet verified on the High Sierra rig. $SUPERSEDE_LINE
 
-          BUILD STAMP — Built: $BUILT · Build: $ASSIGNED_TAG (CI run ${{ github.run_id }}) · Agent: Forge · Authorized: J. Spencer Smith, directive of 2026-11-10 (icon unification — the Dock icon is the app icon on every surface; app development at Priority 0)
+          BUILD STAMP — Built: $BUILT · Build: $ASSIGNED_TAG (CI run ${{ github.run_id }}) · Agent: Forge · Authorized: J. Spencer Smith, $STAMP_DIRECTIVE
 
-          Registry snapshot: sha256:$REGISTRY_SNAPSHOT_SHA256 · schema v6 · ledger changes/0014 · manifest $REGISTRY_MANIFEST_URL"
+          Registry snapshot: sha256:$REGISTRY_SNAPSHOT_SHA256 · schema v6 · ledger changes/0016 · manifest $REGISTRY_MANIFEST_URL"
+          if [ -n "${{ inputs.version_override }}" ]; then
+            gh release delete "$ASSIGNED_TAG" --yes --cleanup-tag || true
+          fi
           gh release create "$ASSIGNED_TAG" Distro-test.zip \
             --prerelease \
             --title "Distro test build ${ASSIGNED_TAG##*-}" \
