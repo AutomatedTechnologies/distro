@@ -58,8 +58,8 @@ jobs:
           TAGLINE=$(Q "SELECT tagline FROM apps WHERE id = 'distro';")
           MIN_MACOS=$(Q "SELECT min_macos FROM apps WHERE id = 'distro';")
           CATALOG_STATUS=$(Q "SELECT status FROM catalog_state WHERE app_id = 'distro';")
-          CURRENT_TAG=$(Q "SELECT b.tag FROM catalog_state cs JOIN builds b ON b.id = cs.build_id WHERE cs.app_id = 'distro';")
-          AUDIT_FLAGS=$(Q "SELECT audit_disassembled || audit_scanned || audit_recompiled || audit_complete FROM builds b JOIN catalog_state cs ON cs.build_id = b.id WHERE cs.app_id = 'distro';")
+          CURRENT_TAG=$(Q "SELECT b.tag FROM catalog_state cs JOIN builds b ON b.id = cs.current_build_id WHERE cs.app_id = 'distro';")
+          AUDIT_FLAGS=$(Q "SELECT audit_disassembled || audit_scanned || audit_recompiled || audit_complete FROM builds b JOIN catalog_state cs ON cs.current_build_id = b.id WHERE cs.app_id = 'distro';")
           [ -n "$BUNDLE_ID" ] || { echo "HALT: registry bundle_id for distro is empty"; exit 1; }
           # Build-time twin of the DistroInstaller audit hard-stop: the
           # current build of record must carry a complete audit entry.
