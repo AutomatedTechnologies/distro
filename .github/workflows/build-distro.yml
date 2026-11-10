@@ -94,7 +94,7 @@ jobs:
               echo "STAMP_DIRECTIVE=directive of 2026-11-10 (distro-test-40 superseding build: icon unification + version on the SDS-8 welcome screen + functional menu bar; app development at Priority 0)"
             else
               echo "SUPERSEDE_LINE=Supersedes $CURRENT_TAG, whose registry audit state is complete (Disassembled, Scanned, Recompiled — the bundle-carried Academy audit entry, Distro files/08 rule); this build carries the same audit entry in its Info.plist."
-              echo "STAMP_DIRECTIVE=directive of 2026-11-10 (icon unification — the Dock icon is the app icon on every surface; app development at Priority 0)"
+              echo "STAMP_DIRECTIVE=directive of 2026-11-10 (DISTRO-DL1: academy-distro://app/<id> deep links route to the app's detail pane — the route Muse's markdown fallback dialog uses to offer MacDown; app development at Priority 0)"
             fi
           } >> "$GITHUB_ENV"
           echo "Registry facts (snapshot $REGISTRY_SNAPSHOT_VERSION, sha256 $A_SHA): tag=$ASSIGNED_TAG name=$DISPLAY_NAME bundle=$BUNDLE_ID status=$CATALOG_STATUS current=$CURRENT_TAG audit=$AUDIT_FLAGS"
