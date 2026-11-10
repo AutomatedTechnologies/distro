@@ -2,9 +2,11 @@
 //  DistroLogoView.h
 //  Distro — Detroit Automation Academy application store (Project 07)
 //
-//  The DAADV2 monochrome logo mark (program design-v2/logo-mark.svg),
-//  drawn from the same geometry and animated: the broadcast node's
-//  signal rings pulse outward in grayscale. Monochrome only (SDS-1).
+//  The Distro AppIcon mark (Resources/logo-mark.svg), drawn from
+//  the same geometry as the bundle icon and animated: the download
+//  arrow eases down and returns in grayscale (owner directive
+//  2026-11-10 — the Dock icon is the app's icon on every surface).
+//  Monochrome only (SDS-1).
 //  Honors Reduce Motion — when NSWorkspace reports
 //  accessibilityDisplayShouldReduceMotion, the mark is static.
 //  Animation runs only while the view is in a visible, unoccluded
