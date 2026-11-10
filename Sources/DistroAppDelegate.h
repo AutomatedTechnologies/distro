@@ -21,6 +21,10 @@
     DistroStoreController *_storeController;
     DistroWelcomeController *_welcomeController;
     NSWindow *_aboutWindow;
+    // Deep link (DISTRO-DL1) that arrived before the store opened:
+    // a catalog id from academy-distro://app/<id>, applied when the
+    // owner continues past the SDS-8 welcome into the store.
+    NSString *_pendingDeepLinkAppID;
 }
 
 - (void)showAboutPanel:(id)sender;
