@@ -11,12 +11,69 @@ on:
 permissions:
   contents: write
 
+# V5-T6 build-query contract (DAADV4 files/V5-T6-DESIGN.md section (c)):
+# this build reads its registry facts from ONE pinned, hash-verified
+# snapshot of the published Academy Registry — never the live site,
+# never a text asset. Pinning is a reviewed act: the version and hash
+# below were set by the reviewed workflow change that converted this
+# pipeline (V5-T6 pilot, 2026-11-10). Builds never resolve "latest".
+env:
+  REGISTRY_SNAPSHOT_VERSION: v6-0011
+  REGISTRY_SNAPSHOT_SHA256: 76a5e277d7ae57012deec898cf52021b2f37285a171682cced93df957baceb61
+  REGISTRY_MANIFEST_URL: https://detroitautomationacademy.com/registry/v6-0011/registry-manifest.json
+  REGISTRY_SNAPSHOT_URL: https://detroitautomationacademy.com/registry/v6-0011/registry.db
+
 jobs:
   build:
     runs-on: macos-15
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+
+      - name: Fetch + verify pinned registry snapshot; query build facts
+        run: |
+          set -euo pipefail
+          cd "$RUNNER_TEMP"
+          curl -fsSL "$REGISTRY_MANIFEST_URL" -o registry-manifest.json
+          curl -fsSL "$REGISTRY_SNAPSHOT_URL" -o registry.db
+          M_SHA=$(python3 -c "import json; print(json.load(open('registry-manifest.json'))['sha256'])")
+          M_SIZE=$(python3 -c "import json; print(json.load(open('registry-manifest.json'))['size_bytes'])")
+          A_SHA=$(shasum -a 256 registry.db | awk '{print $1}')
+          A_SIZE=$(stat -f%z registry.db)
+          echo "snapshot $REGISTRY_SNAPSHOT_VERSION: manifest sha=$M_SHA size=$M_SIZE; actual sha=$A_SHA size=$A_SIZE"
+          # Verify-then-query: any mismatch HALTS the build. No fallback —
+          # not to the live site, not to a text asset, not to a prior snapshot.
+          [ "$A_SHA" = "$M_SHA" ] || { echo "HALT: snapshot SHA-256 != manifest SHA-256"; exit 1; }
+          [ "$A_SHA" = "$REGISTRY_SNAPSHOT_SHA256" ] || { echo "HALT: snapshot SHA-256 != pinned SHA-256"; exit 1; }
+          [ "$A_SIZE" = "$M_SIZE" ] || { echo "HALT: snapshot size != manifest size"; exit 1; }
+          Q() { sqlite3 "file:$RUNNER_TEMP/registry.db?mode=ro" "$1"; }
+          # Version assignment — the next tag is assigned by query against
+          # the builds history, not by CI run numbering.
+          ASSIGNED_TAG=$(Q "SELECT 'distro-test-' || (MAX(CAST(substr(tag, 13) AS INTEGER)) + 1) FROM builds WHERE app_id = 'distro' AND tag GLOB 'distro-test-*';")
+          COLLIDES=$(Q "SELECT COUNT(*) FROM builds WHERE app_id = 'distro' AND tag = '$ASSIGNED_TAG';")
+          [ "$COLLIDES" = "0" ] || { echo "HALT: assigned tag $ASSIGNED_TAG already exists in builds"; exit 1; }
+          # Branding metadata + catalog position + audit state of record.
+          DISPLAY_NAME=$(Q "SELECT display_name FROM apps WHERE id = 'distro';")
+          BUNDLE_ID=$(Q "SELECT bundle_id FROM apps WHERE id = 'distro';")
+          TAGLINE=$(Q "SELECT tagline FROM apps WHERE id = 'distro';")
+          MIN_MACOS=$(Q "SELECT min_macos FROM apps WHERE id = 'distro';")
+          CATALOG_STATUS=$(Q "SELECT status FROM catalog_state WHERE app_id = 'distro';")
+          CURRENT_TAG=$(Q "SELECT b.tag FROM catalog_state cs JOIN builds b ON b.id = cs.build_id WHERE cs.app_id = 'distro';")
+          AUDIT_FLAGS=$(Q "SELECT audit_disassembled || audit_scanned || audit_recompiled || audit_complete FROM builds b JOIN catalog_state cs ON cs.build_id = b.id WHERE cs.app_id = 'distro';")
+          [ -n "$BUNDLE_ID" ] || { echo "HALT: registry bundle_id for distro is empty"; exit 1; }
+          # Build-time twin of the DistroInstaller audit hard-stop: the
+          # current build of record must carry a complete audit entry.
+          [ "$AUDIT_FLAGS" = "1111" ] || { echo "HALT: audit state of record for $CURRENT_TAG is incomplete ($AUDIT_FLAGS)"; exit 1; }
+          {
+            echo "ASSIGNED_TAG=$ASSIGNED_TAG"
+            echo "DISPLAY_NAME=$DISPLAY_NAME"
+            echo "BUNDLE_ID=$BUNDLE_ID"
+            echo "TAGLINE=$TAGLINE"
+            echo "MIN_MACOS=$MIN_MACOS"
+            echo "CATALOG_STATUS=$CATALOG_STATUS"
+            echo "CURRENT_TAG=$CURRENT_TAG"
+          } >> "$GITHUB_ENV"
+          echo "Registry facts (snapshot $REGISTRY_SNAPSHOT_VERSION, sha256 $A_SHA): tag=$ASSIGNED_TAG name=$DISPLAY_NAME bundle=$BUNDLE_ID status=$CATALOG_STATUS current=$CURRENT_TAG audit=$AUDIT_FLAGS"
 
       - name: Select Xcode
         run: |
@@ -54,10 +111,14 @@ jobs:
           fi
           echo "Built app: $APP"
           test -n "$APP"
-          # Owner's standing fix (2026-11-07): stamp CFBundleVersion with
-          # the run-derived build id so installed copies are
-          # distinguishable. CFBundleShortVersionString stays 0.1.0.
-          /usr/libexec/PlistBuddy -c "Set :CFBundleVersion distro-test-${{ github.run_number }}" "$APP/Contents/Info.plist"
+          # The build version is the registry-assigned tag from the pinned
+          # snapshot query above (V5-T6 contract), not the CI run number.
+          # CFBundleShortVersionString stays 0.1.0.
+          /usr/libexec/PlistBuddy -c "Set :CFBundleVersion $ASSIGNED_TAG" "$APP/Contents/Info.plist"
+          # Branding cross-check against the snapshot: the bundle identity
+          # the source stamps must equal the registry fact, or halt.
+          PLIST_BUNDLE=$(/usr/libexec/PlistBuddy -c "Print :CFBundleIdentifier" "$APP/Contents/Info.plist")
+          [ "$PLIST_BUNDLE" = "$BUNDLE_ID" ] || { echo "HALT: plist bundle id $PLIST_BUNDLE != registry bundle_id $BUNDLE_ID"; exit 1; }
           /usr/libexec/PlistBuddy -c "Print :CFBundleShortVersionString" "$APP/Contents/Info.plist"
           /usr/libexec/PlistBuddy -c "Print :CFBundleVersion" "$APP/Contents/Info.plist"
           /usr/libexec/PlistBuddy -c "Print :NSHumanReadableCopyright" "$APP/Contents/Info.plist"
@@ -79,10 +140,18 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           BUILT=$(date -u '+%Y-%m-%d %H:%M UTC')
-          NOTES="Internal test build of Distro, the Detroit Automation Academy application store for macOS High Sierra. Publisher: Detroit Automation Academy. Unsigned test build — not gate-cleared, not yet verified on the High Sierra rig.
+          # The release body is a RENDER of the pinned snapshot query
+          # (V5-T6 pilot measure 1): every app fact in it — tagline,
+          # catalog status, floor, current build, audit state — came from
+          # the verified snapshot above. No hand-kept draft exists.
+          NOTES="$TAGLINE
 
-          BUILD STAMP — Built: $BUILT · Build: distro-test-${{ github.run_number }} (CI run ${{ github.run_id }}) · Agent: Forge · Authorized: J. Spencer Smith, directive of 2026-11-08 (The application icon needs to be academy standard, high priority, redraft and continue)"
-          gh release create distro-test-${{ github.run_number }} Distro-test.zip \
+          Publisher: Detroit Automation Academy. Catalog status: $CATALOG_STATUS. Floor: macOS $MIN_MACOS. Unsigned test build — not gate-cleared, not yet verified on the High Sierra rig. Supersedes $CURRENT_TAG, whose registry audit state is complete (Disassembled, Scanned, Recompiled — the bundle-carried Academy audit entry, Distro files/08 rule); this build carries the same audit entry in its Info.plist.
+
+          BUILD STAMP — Built: $BUILT · Build: $ASSIGNED_TAG (CI run ${{ github.run_id }}) · Agent: Forge · Authorized: J. Spencer Smith, directive of 2026-11-09 (V5-T6 Pipeline Integration — Distro pilot build under the build-query contract)
+
+          Registry snapshot: sha256:$REGISTRY_SNAPSHOT_SHA256 · schema v6 · ledger changes/0011 · manifest $REGISTRY_MANIFEST_URL"
+          gh release create "$ASSIGNED_TAG" Distro-test.zip \
             --prerelease \
-            --title "Distro test build ${{ github.run_number }}" \
+            --title "Distro test build ${ASSIGNED_TAG##*-}" \
             --notes "$NOTES"
