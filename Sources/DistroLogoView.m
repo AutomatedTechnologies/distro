@@ -5,11 +5,21 @@
 
 #import "DistroLogoView.h"
 
-// Geometry of record: design-v2/logo-mark.svg, viewBox 0 0 64 64.
-// Crosspoint dots at (14|32|50, 14|32|50) r=3 except the center, which
-// is the enlarged node r=6.5 at (32,32). Signal arcs are quarter arcs
-// centered on the node: r=14 (32,18)->(46,32) and r=23 (32,9)->(55,32),
-// stroke width 4.5, round caps. Pulse rings expand from the node.
+// Geometry of record: Resources/logo-mark.svg, viewBox 0 0 64 64 —
+// the Distro AppIcon artwork itself (owner directive 2026-11-10:
+// "distro dock icon and app icon different. use dock icon"). The
+// mark this view draws is the bundle AppIcon composition, measured
+// from the committed AppIcon.iconset master (1024 px): a white
+// rounded tile (inset 5.75, size 52.5, corner radius 11.7), a black
+// rounded square centered in it (inset 18.55, size 26.9, corner
+// radius 4.0), and the white download arrow (shaft half-width 2.5
+// from y 24.5, head top edge y 32.9 at half-width 7.75, tip y 41.9).
+// Every in-app surface that presents Distro's own icon — the SDS-8
+// welcome screen, the About window, the store sidebar — draws
+// through this view, so the icon is one glyph everywhere. The
+// SDS-8 motion is a download cue: while animating, the arrow eases
+// down 1.1 canvas units and returns over the 2 s period.
+// Monochrome only (SDS-1).
 static const CGFloat DistroLogoCanvas = 64.0;
 static const NSTimeInterval DistroLogoPeriod = 2.0;
 
@@ -25,53 +35,33 @@ static const NSTimeInterval DistroLogoPeriod = 2.0;
     [super dealloc];
 }
 
-- (void)drawDotAt:(NSPoint)p radius:(CGFloat)r color:(NSColor *)color {
-    [color setFill];
-    NSRect rect = NSMakeRect(p.x - r, p.y - r, r * 2, r * 2);
-    [[NSBezierPath bezierPathWithOvalInRect:rect] fill];
-}
+- (void)drawIconWithArrowOffset:(CGFloat)dy {
+    // The tile: white rounded square, as in the AppIcon artwork.
+    NSRect tileRect = NSMakeRect(5.75, 5.75, 52.5, 52.5);
+    [[NSColor whiteColor] setFill];
+    [[NSBezierPath bezierPathWithRoundedRect:tileRect
+                                     xRadius:11.7
+                                     yRadius:11.7] fill];
 
-- (void)drawQuarterArcRadius:(CGFloat)r stroke:(CGFloat)stroke color:(NSColor *)color {
-    // Quarter arc in the NE quadrant of the node at (32,32): from the
-    // point above the node (32, 32-r) to the point right of it (32+r, 32).
-    // In flipped coordinates angles run clockwise: above = -90°, right = 0°.
-    NSBezierPath *path = [NSBezierPath bezierPath];
-    [path appendBezierPathWithArcWithCenter:NSMakePoint(32, 32)
-                                     radius:r
-                                 startAngle:-90
-                                   endAngle:0
-                                  clockwise:NO];
-    [path setLineWidth:stroke];
-    [path setLineCapStyle:NSRoundLineCapStyle];
-    [color setStroke];
-    [path stroke];
-    // Round caps at both endpoints (SVG stroke-linecap="round").
-    [self drawDotAt:NSMakePoint(32, 32 - r) radius:stroke / 2 color:color];
-    [self drawDotAt:NSMakePoint(32 + r, 32) radius:stroke / 2 color:color];
-}
+    // The inset black rounded square.
+    NSRect squareRect = NSMakeRect(18.55, 18.55, 26.9, 26.9);
+    [[NSColor blackColor] setFill];
+    [[NSBezierPath bezierPathWithRoundedRect:squareRect
+                                     xRadius:4.0
+                                     yRadius:4.0] fill];
 
-- (void)drawPulseRings {
-    NSTimeInterval elapsed = [NSDate timeIntervalSinceReferenceDate] - _startTime;
-    NSColor *ink = [NSColor blackColor];
-    for (NSInteger i = 0; i < 2; i++) {
-        CGFloat phase = (CGFloat)fmod(elapsed / DistroLogoPeriod + i * 0.5, 1.0);
-        CGFloat radius = 9.0 + phase * 21.0;             // 9 -> 30 canvas units
-        CGFloat alpha = 0.55 * (1.0 - phase) * (1.0 - phase);
-        if (alpha < 0.02) continue;
-        NSColor *ring = [ink colorWithAlphaComponent:alpha];
-        NSBezierPath *path = [NSBezierPath bezierPath];
-        [path appendBezierPathWithArcWithCenter:NSMakePoint(32, 32)
-                                         radius:radius
-                                     startAngle:-90
-                                       endAngle:0
-                                      clockwise:NO];
-        [path setLineWidth:3.2];
-        [path setLineCapStyle:NSRoundLineCapStyle];
-        [ring setStroke];
-        [path stroke];
-        [self drawDotAt:NSMakePoint(32, 32 - radius) radius:1.6 color:ring];
-        [self drawDotAt:NSMakePoint(32 + radius, 32) radius:1.6 color:ring];
-    }
+    // The download arrow, in white, on the black square.
+    NSBezierPath *arrow = [NSBezierPath bezierPath];
+    [arrow moveToPoint:NSMakePoint(29.5, 24.5 + dy)];
+    [arrow lineToPoint:NSMakePoint(34.5, 24.5 + dy)];
+    [arrow lineToPoint:NSMakePoint(34.5, 32.9 + dy)];
+    [arrow lineToPoint:NSMakePoint(39.75, 32.9 + dy)];
+    [arrow lineToPoint:NSMakePoint(32.0, 41.9 + dy)];
+    [arrow lineToPoint:NSMakePoint(24.25, 32.9 + dy)];
+    [arrow lineToPoint:NSMakePoint(29.5, 32.9 + dy)];
+    [arrow closePath];
+    [[NSColor whiteColor] setFill];
+    [arrow fill];
 }
 
 - (void)drawRect:(NSRect)dirtyRect {
@@ -84,22 +74,13 @@ static const NSTimeInterval DistroLogoPeriod = 2.0;
     [t scaleBy:scale];
     [t concat];
 
-    NSColor *ink = [NSColor blackColor];
-    if (_animating) [self drawPulseRings];
-
-    // Crosspoint grid dots (all but the center).
-    const CGFloat coords[3] = {14, 32, 50};
-    for (int xi = 0; xi < 3; xi++) {
-        for (int yi = 0; yi < 3; yi++) {
-            if (coords[xi] == 32 && coords[yi] == 32) continue;
-            [self drawDotAt:NSMakePoint(coords[xi], coords[yi]) radius:3 color:ink];
-        }
+    CGFloat dy = 0;
+    if (_animating) {
+        NSTimeInterval elapsed = [NSDate timeIntervalSinceReferenceDate] - _startTime;
+        CGFloat phase = (CGFloat)fmod(elapsed / DistroLogoPeriod, 1.0);
+        dy = (CGFloat)(1.1 * (0.5 - 0.5 * cos(2.0 * M_PI * phase)));
     }
-    // Signal arcs of record.
-    [self drawQuarterArcRadius:14 stroke:4.5 color:ink];
-    [self drawQuarterArcRadius:23 stroke:4.5 color:ink];
-    // The broadcast node.
-    [self drawDotAt:NSMakePoint(32, 32) radius:6.5 color:ink];
+    [self drawIconWithArrowOffset:dy];
 }
 
 #pragma mark - Animation lifecycle
