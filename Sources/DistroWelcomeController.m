@@ -121,6 +121,21 @@ static void DistroWelcomeAddStrip(NSView *parent, NSRect frame, NSColor *color) 
         // button cell — the Return key equivalent above still dismisses,
         // and the button renders in the standard gray bezel.
 
+        // Version on the startup screen (J directive 2026-11-10 16:31
+        // EST; SDS-10 10.2): the build's version, read from this
+        // bundle's own Info.plist at runtime — never hardcoded — sits
+        // at the foot of the welcome screen, under Continue.
+        NSDictionary *info = [[NSBundle mainBundle] infoDictionary];
+        NSString *shortVersion = [info objectForKey:@"CFBundleShortVersionString"];
+        NSString *build = [info objectForKey:@"CFBundleVersion"];
+        NSTextField *version = DistroLabel(
+            [NSString stringWithFormat:@"Version %@ (%@)",
+                shortVersion != nil ? shortVersion : @"0.1.0",
+                build != nil ? build : @"1"],
+            11, NO, [NSColor colorWithCalibratedWhite:0.27 alpha:1.0]);
+        [version setFrame:NSMakeRect(40, 14, w - 80, 16)];
+        [content addSubview:version];
+
         [window center];
     }
     return self;
