@@ -12,6 +12,13 @@
 @implementation DistroAppDelegate
 
 - (void)applicationDidFinishLaunching:(NSNotification *)notification {
+    // Deep links (DISTRO-DL1): register for GetURL events first, so
+    // a cold launch through academy-distro://app/<id> is captured.
+    [[NSAppleEventManager sharedAppleEventManager]
+        setEventHandler:self
+            andSelector:@selector(handleGetURLEvent:withReplyEvent:)
+          forEventClass:kInternetEventClass
+             andEventID:kAEGetURL];
     [self buildMenu];
     _records = [[DistroInstalledRecords alloc] init];
 
@@ -33,9 +40,61 @@
     [_storeController showWindow:self];
     [[_storeController window] makeKeyAndOrderFront:self];
     [_storeController loadCatalog];
+    if (_pendingDeepLinkAppID != nil) {
+        // The controller holds the id until its catalog lands.
+        [_storeController showDetailForAppID:_pendingDeepLinkAppID];
+        [_pendingDeepLinkAppID release];
+        _pendingDeepLinkAppID = nil;
+    }
     // The welcome controller's job is done.
     [_welcomeController release];
     _welcomeController = nil;
+}
+
+#pragma mark - Deep links (DISTRO-DL1)
+
+// academy-distro://app/<catalog-id> routes to that app's detail
+// pane (Distro files/24 section 4). The URL is data, never code:
+// the scheme and host must match exactly, the id must be a single
+// path component, and DistroStoreController matches it against the
+// live catalog — an unknown id lands on a status line. A link only
+// selects; it starts no operation, so the store's one-operation
+// rule is untouched.
+- (void)handleGetURLEvent:(NSAppleEventDescriptor *)event
+          withReplyEvent:(NSAppleEventDescriptor *)replyEvent {
+    NSString *urlString = [[event paramDescriptorForKeyword:keyDirectObject]
+        stringValue];
+    NSURL *url = [NSURL URLWithString:urlString != nil ? urlString : @""];
+    if (![[[url scheme] lowercaseString] isEqualToString:@"academy-distro"]) {
+        return;
+    }
+    if (![[[url host] lowercaseString] isEqualToString:@"app"]) {
+        return;
+    }
+    NSString *appID = [[url path] stringByRemovingPercentEncoding];
+    if ([appID hasPrefix:@"/"]) {
+        appID = [appID substringFromIndex:1];
+    }
+    if ([appID length] == 0 ||
+        [appID rangeOfString:@"/"].location != NSNotFound) {
+        return;
+    }
+    [self routeDeepLinkToAppID:appID];
+}
+
+- (void)routeDeepLinkToAppID:(NSString *)appID {
+    if (_storeController != nil) {
+        [_storeController showWindow:self];
+        [[_storeController window] makeKeyAndOrderFront:self];
+        [_storeController showDetailForAppID:appID];
+    } else {
+        // The SDS-8 welcome still gates the store at launch; the
+        // route applies when the owner continues into the store.
+        [_pendingDeepLinkAppID release];
+        _pendingDeepLinkAppID = [appID retain];
+        [_welcomeController showWindow:self];
+        [[_welcomeController window] makeKeyAndOrderFront:self];
+    }
 }
 
 - (BOOL)applicationShouldTerminateAfterLastWindowClosed:(NSApplication *)sender {
@@ -47,6 +106,7 @@
     [_storeController release];
     [_welcomeController release];
     [_aboutWindow release];
+    [_pendingDeepLinkAppID release];
     [super dealloc];
 }
 
