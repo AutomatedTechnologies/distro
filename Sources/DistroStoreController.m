@@ -208,6 +208,7 @@ enum {
     [_placeholderCache release];
     [_iconFetchesInFlight release];
     [_busyAppID release];
+    [_pendingDeepLinkAppID release];
     [super dealloc];
 }
 
@@ -450,7 +451,56 @@ enum {
                 (unsigned long)[entries count]]];
             [selfRef rebuildSidebarAndReload];
             [selfRef fetchCatalogIcons];
+            if (selfRef->_pendingDeepLinkAppID != nil) {
+                NSString *pending =
+                    [selfRef->_pendingDeepLinkAppID retain];
+                [selfRef->_pendingDeepLinkAppID release];
+                selfRef->_pendingDeepLinkAppID = nil;
+                [selfRef showDetailForAppID:pending];
+                [pending release];
+            }
         }];
+}
+
+#pragma mark - Deep links (DISTRO-DL1)
+
+// Route a deep link (academy-distro://app/<id>) to the entry's
+// detail pane. Navigation only: selecting an entry starts no
+// operation, so the one-operation rule (_busyAppID) is untouched —
+// an in-flight install or update continues undisturbed, and its
+// row state is repainted by updateDetail like any selection.
+- (void)showDetailForAppID:(NSString *)appID {
+    if (appID == nil || [appID length] == 0) {
+        return;
+    }
+    if (_entries == nil) {
+        // The catalog has not landed yet (the link arrived at
+        // launch): hold the id; loadCatalog applies it.
+        [_pendingDeepLinkAppID release];
+        _pendingDeepLinkAppID = [appID retain];
+        return;
+    }
+    DistroAppEntry *entry = [self entryForAppID:appID];
+    if (entry == nil) {
+        [self setStatus:[NSString stringWithFormat:
+            @"That app (%@) is not in the Academy catalog.", appID]];
+        return;
+    }
+    if (![_visibleEntries containsObject:entry]) {
+        [_activeFilter release];
+        _activeFilter = [@"all" retain];
+        [self rebuildSidebarAndReload];
+    }
+    NSUInteger row = [_visibleEntries indexOfObject:entry];
+    if (row != NSNotFound) {
+        [_appTable selectRowIndexes:[NSIndexSet indexSetWithIndex:row]
+               byExtendingSelection:NO];
+        [_appTable scrollRowToVisible:(NSInteger)row];
+        _selectedEntry = entry;
+        [self updateDetail];
+        [self setStatus:[NSString stringWithFormat:
+            @"%@ — linked from another Academy app.", [entry name]]];
+    }
 }
 
 - (void)setStatus:(NSString *)text {
