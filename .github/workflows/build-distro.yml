@@ -18,10 +18,10 @@ permissions:
 # below were set by the reviewed workflow change that converted this
 # pipeline (V5-T6 pilot, 2026-11-10). Builds never resolve "latest".
 env:
-  REGISTRY_SNAPSHOT_VERSION: v6-0011
-  REGISTRY_SNAPSHOT_SHA256: 76a5e277d7ae57012deec898cf52021b2f37285a171682cced93df957baceb61
-  REGISTRY_MANIFEST_URL: https://detroitautomationacademy.com/registry/v6-0011/registry-manifest.json
-  REGISTRY_SNAPSHOT_URL: https://detroitautomationacademy.com/registry/v6-0011/registry.db
+  REGISTRY_SNAPSHOT_VERSION: v6-0014
+  REGISTRY_SNAPSHOT_SHA256: 5ed663645be558f7aa8850f2910d4515ab71ebde5e4633e9e7e1396bae414e05
+  REGISTRY_MANIFEST_URL: https://detroitautomationacademy.com/registry/v6-0014/registry-manifest.json
+  REGISTRY_SNAPSHOT_URL: https://detroitautomationacademy.com/registry/v6-0014/registry.db
 
 jobs:
   build:
@@ -148,9 +148,9 @@ jobs:
 
           Publisher: Detroit Automation Academy. Catalog status: $CATALOG_STATUS. Floor: macOS $MIN_MACOS. Unsigned test build — not gate-cleared, not yet verified on the High Sierra rig. Supersedes $CURRENT_TAG, whose registry audit state is complete (Disassembled, Scanned, Recompiled — the bundle-carried Academy audit entry, Distro files/08 rule); this build carries the same audit entry in its Info.plist.
 
-          BUILD STAMP — Built: $BUILT · Build: $ASSIGNED_TAG (CI run ${{ github.run_id }}) · Agent: Forge · Authorized: J. Spencer Smith, directive of 2026-11-09 (V5-T6 Pipeline Integration — Distro pilot build under the build-query contract)
+          BUILD STAMP — Built: $BUILT · Build: $ASSIGNED_TAG (CI run ${{ github.run_id }}) · Agent: Forge · Authorized: J. Spencer Smith, directive of 2026-11-10 (icon unification — the Dock icon is the app icon on every surface; app development at Priority 0)
 
-          Registry snapshot: sha256:$REGISTRY_SNAPSHOT_SHA256 · schema v6 · ledger changes/0011 · manifest $REGISTRY_MANIFEST_URL"
+          Registry snapshot: sha256:$REGISTRY_SNAPSHOT_SHA256 · schema v6 · ledger changes/0014 · manifest $REGISTRY_MANIFEST_URL"
           gh release create "$ASSIGNED_TAG" Distro-test.zip \
             --prerelease \
             --title "Distro test build ${ASSIGNED_TAG##*-}" \
