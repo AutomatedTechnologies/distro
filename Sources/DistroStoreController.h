@@ -48,6 +48,7 @@
     NSProgressIndicator *_progress;
     id _selectedEntry;         // DistroAppEntry (retained via _entries)
     NSString *_busyAppID;
+    NSString *_pendingDeepLinkAppID;  // DISTRO-DL1 id awaiting the catalog
 
     // Update All (J directive 2026-11-08): a sequential queue through
     // the existing per-app update path — one operation at a time,
@@ -62,5 +63,11 @@
 
 - (id)initWithRecords:(DistroInstalledRecords *)records;
 - (void)loadCatalog;   // fetch (or refetch) the live catalog
+
+// Deep links (DISTRO-DL1): select the catalog entry with this id
+// and show its detail pane. Selection only — never starts an
+// operation. If the catalog has not loaded yet, the id is held and
+// applied when the load completes.
+- (void)showDetailForAppID:(NSString *)appID;
 
 @end
