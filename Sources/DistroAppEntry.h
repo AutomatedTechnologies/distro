@@ -29,6 +29,7 @@
     NSString *_iconURLString;
     NSString *_datePublished;
     NSString *_buildNotes;
+    NSArray *_predecessorBundleIDs;
 }
 
 // Schema fields (see charter §4). downloadURLString / sourceURLString /
@@ -50,6 +51,7 @@
 @property (nonatomic, copy) NSString *iconURLString;
 @property (nonatomic, copy) NSString *datePublished;   // ISO-8601, nil iff no build exists
 @property (nonatomic, copy) NSString *buildNotes;      // optional (catalog 2026-11-08); nil when absent/null
+@property (nonatomic, copy) NSArray *predecessorBundleIDs; // optional (catalog 2026-11-10, pre-flight standard): bundle identities this app replaces; nil when absent/null/malformed
 
 // Builds an entry from one catalog "apps" dictionary. Returns nil if any
 // required field is missing or of the wrong type; unknown fields are
