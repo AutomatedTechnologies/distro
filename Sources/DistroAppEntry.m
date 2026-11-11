@@ -15,6 +15,20 @@ static NSString *DistroStringValue(NSDictionary *dict, NSString *key, BOOL *pres
     return nil;
 }
 
+// Returns the array value for key when it is an array whose elements
+// are all strings (empty yields nil); nil when the key is absent,
+// null, or of any other shape — the optional-field rule: a malformed
+// optional field never invalidates the entry.
+static NSArray *DistroStringArrayValue(NSDictionary *dict, NSString *key) {
+    id value = [dict objectForKey:key];
+    if (![value isKindOfClass:[NSArray class]]) return nil;
+    if ([value count] == 0) return nil;
+    for (id element in value) {
+        if (![element isKindOfClass:[NSString class]]) return nil;
+    }
+    return value;
+}
+
 @implementation DistroAppEntry
 
 @synthesize appID = _appID;
@@ -33,6 +47,7 @@ static NSString *DistroStringValue(NSDictionary *dict, NSString *key, BOOL *pres
 @synthesize iconURLString = _iconURLString;
 @synthesize datePublished = _datePublished;
 @synthesize buildNotes = _buildNotes;
+@synthesize predecessorBundleIDs = _predecessorBundleIDs;
 
 - (void)dealloc {
     [_appID release];
@@ -51,6 +66,7 @@ static NSString *DistroStringValue(NSDictionary *dict, NSString *key, BOOL *pres
     [_iconURLString release];
     [_datePublished release];
     [_buildNotes release];
+    [_predecessorBundleIDs release];
     [super dealloc];
 }
 
@@ -107,6 +123,12 @@ static NSString *DistroStringValue(NSDictionary *dict, NSString *key, BOOL *pres
     // Optional field: absent or null yields nil and the entry stays
     // valid; older catalogs without it parse unchanged.
     entry.buildNotes = DistroStringValue(dictionary, @"buildNotes", NULL);
+    // Optional field (pre-flight standard, charter §6): bundle
+    // identities this app replaces under earlier identities of the
+    // same product. Absent, null, or malformed yields nil and the
+    // entry stays valid; older catalogs without it parse unchanged.
+    entry.predecessorBundleIDs =
+        DistroStringArrayValue(dictionary, @"predecessorBundleIDs");
     return entry;
 }
 
