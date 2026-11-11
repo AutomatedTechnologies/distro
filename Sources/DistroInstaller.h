@@ -18,6 +18,26 @@
 //    .pkg -> the verified file is opened with the system Installer;
 //            the OS owns the flow from there (Gatekeeper, admin prompt).
 //
+//  Pre-flight (standard, J directive 2026-11-10; charter §6). On every
+//  app-bundle install/update — the per-app path and the Update All
+//  queue alike, both of which route through this class — after the
+//  SHA-256 and audit gates pass and before the new bundle is placed:
+//  (1) every running process whose bundle ID is the new bundle's own
+//  ID, the installed record's bundle ID for the entry, or one of the
+//  entry's declared predecessorBundleIDs is closed — graceful
+//  terminate, a 5-second grace, then force-terminate; still running
+//  after that stops the install with nothing changed; (2) the
+//  previous version's bundle is removed — the recorded install
+//  location, any bundle in the Applications directories carrying an
+//  identity being replaced, and any bundle at the destination — each
+//  moved to Trash, never unlinked. Pre-flight removes bundles ONLY:
+//  app data is stored separately (~/Library/Application Support/…)
+//  and is never deleted, moved, or read by an install. Self-update:
+//  Distro never terminates its own process mid-install (the installer
+//  executes inside it) — the close step skips Distro's own process,
+//  the swap proceeds under the running process, and the placed build
+//  is what runs at next launch.
+//
 //  Uninstall covers app-bundle installs Distro made: bundle to Trash,
 //  record dropped. .pkg installs get honest removal guidance, not a
 //  pretend undo. No privileged helper anywhere (charter §5.5).
