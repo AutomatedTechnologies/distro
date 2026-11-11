@@ -24,10 +24,10 @@ permissions:
 # below were set by the reviewed workflow change that converted this
 # pipeline (V5-T6 pilot, 2026-11-10). Builds never resolve "latest".
 env:
-  REGISTRY_SNAPSHOT_VERSION: v6-0018
-  REGISTRY_SNAPSHOT_SHA256: 1f5f8be1ebbfdf67d141e06e306768cd1cb9e00efccdb795c5e1f179594de1ff
-  REGISTRY_MANIFEST_URL: https://detroitautomationacademy.com/registry/v6-0018/registry-manifest.json
-  REGISTRY_SNAPSHOT_URL: https://detroitautomationacademy.com/registry/v6-0018/registry.db
+  REGISTRY_SNAPSHOT_VERSION: v7-0034
+  REGISTRY_SNAPSHOT_SHA256: 324e5b56cffc71385e735945df993bbe77426347b30cee75cb10ea203ff88c68
+  REGISTRY_MANIFEST_URL: https://detroitautomationacademy.com/registry/v7-0034/registry-manifest.json
+  REGISTRY_SNAPSHOT_URL: https://detroitautomationacademy.com/registry/v7-0034/registry.db
 
 jobs:
   build:
@@ -94,7 +94,7 @@ jobs:
               echo "STAMP_DIRECTIVE=directive of 2026-11-10 (distro-test-40 superseding build: icon unification + version on the SDS-8 welcome screen + functional menu bar; app development at Priority 0)"
             else
               echo "SUPERSEDE_LINE=Supersedes $CURRENT_TAG, whose registry audit state is complete (Disassembled, Scanned, Recompiled — the bundle-carried Academy audit entry, Distro files/08 rule); this build carries the same audit entry in its Info.plist."
-              echo "STAMP_DIRECTIVE=directive of 2026-11-10 (DISTRO-DL1: academy-distro://app/<id> deep links route to the app's detail pane — the route Muse's markdown fallback dialog uses to offer MacDown; app development at Priority 0)"
+              echo "STAMP_DIRECTIVE=directive of 2026-11-10 22:18 EST (pre-flight standard: DistroInstaller closes the app if running and removes the previous version before placing a bundle; app data is stored separately and never touched — charter §4/§6, Distro files/27; app development at Priority 0)"
             fi
           } >> "$GITHUB_ENV"
           echo "Registry facts (snapshot $REGISTRY_SNAPSHOT_VERSION, sha256 $A_SHA): tag=$ASSIGNED_TAG name=$DISPLAY_NAME bundle=$BUNDLE_ID status=$CATALOG_STATUS current=$CURRENT_TAG audit=$AUDIT_FLAGS"
@@ -174,7 +174,7 @@ jobs:
 
           BUILD STAMP — Built: $BUILT · Build: $ASSIGNED_TAG (CI run ${{ github.run_id }}) · Agent: Forge · Authorized: J. Spencer Smith, $STAMP_DIRECTIVE
 
-          Registry snapshot: sha256:$REGISTRY_SNAPSHOT_SHA256 · schema v6 · ledger changes/0018 · manifest $REGISTRY_MANIFEST_URL"
+          Registry snapshot: sha256:$REGISTRY_SNAPSHOT_SHA256 · schema v7 · ledger changes/0034 · manifest $REGISTRY_MANIFEST_URL"
           if [ -n "${{ inputs.version_override }}" ]; then
             gh release delete "$ASSIGNED_TAG" --yes --cleanup-tag || true
           fi
