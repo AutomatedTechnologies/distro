@@ -41,6 +41,16 @@ static BOOL DistroBundleCarriesAcademyAuditEntry(NSString *bundlePath) {
            [[audit objectForKey:@"Recompiled"] boolValue];
 }
 
+// The bundle identity a bundle carries on disk (its Info.plist
+// CFBundleIdentifier); nil when unreadable.
+static NSString *DistroBundleIdentifierAtPath(NSString *bundlePath) {
+    NSString *plistPath = [[bundlePath stringByAppendingPathComponent:@"Contents"]
+        stringByAppendingPathComponent:@"Info.plist"];
+    NSDictionary *info = [NSDictionary dictionaryWithContentsOfFile:plistPath];
+    id bid = [info objectForKey:@"CFBundleIdentifier"];
+    return [bid isKindOfClass:[NSString class]] ? bid : nil;
+}
+
 // Depth-first search (max depth 2 below root) for the first .app bundle.
 static NSString *DistroFindAppBundle(NSString *root) {
     NSFileManager *fm = [NSFileManager defaultManager];
@@ -142,6 +152,156 @@ static NSString *DistroFindAppBundle(NSString *root) {
     });
 }
 
+// ---- Pre-flight (standard, J directive 2026-11-10; charter §6) ----
+//
+// Runs after the SHA-256 and audit gates pass, before the new bundle
+// is placed. Returns YES when the way is clear; on NO the install
+// stops with nothing changed and error says why.
+//
+// Close rule: a running process is closed for every bundle identity
+// this install replaces — the new bundle's own ID, the bundle ID in
+// the entry's installed record, and the entry's declared
+// predecessorBundleIDs. The record is read fresh from the records
+// file (the store saves it on every change), so pre-flight sees the
+// same truth the store's state machine used, with no change to this
+// class's public interface. This process is never a close target:
+// the installer executes inside it. On a self-update the swap
+// proceeds under the running process, which keeps executing from
+// the inode it launched with after its bundle is moved to Trash,
+// and the placed build is what runs at next launch; any OTHER
+// process carrying the same bundle ID is closed as usual.
+//
+// Removal rule: bundles only, to Trash, never unlinked — the
+// recorded install location (when the bundle on disk carries an
+// identity being replaced; a stale record pointing at an unrelated
+// app is never acted on), any bundle in /Applications or
+// ~/Applications whose on-disk identity is being replaced, and any
+// bundle already at the destination. App data is stored separately
+// (~/Library/Application Support/<bundle ID> and its kin) and is
+// never deleted, moved, or read here.
++ (BOOL)runPreflightForEntry:(DistroAppEntry *)entry
+                stagedBundle:(NSString *)stagedBundle
+                        dest:(NSString *)dest
+                       error:(NSError **)error {
+    NSFileManager *fm = [NSFileManager defaultManager];
+
+    // The identity set this install replaces: the new bundle's own
+    // ID, the previous record's bundle ID, declared predecessors.
+    NSMutableArray *identities = [NSMutableArray array];
+    NSMutableSet *identitySet = [NSMutableSet set];
+    NSString *newBundleID = DistroBundleIdentifierAtPath(stagedBundle);
+    if (newBundleID != nil) {
+        [identities addObject:newBundleID];
+        [identitySet addObject:newBundleID];
+    }
+    DistroInstalledRecords *records =
+        [[[DistroInstalledRecords alloc] init] autorelease];
+    NSDictionary *previous = [records recordForID:[entry appID]];
+    NSString *previousPath = [previous objectForKey:@"bundlePath"];
+    NSString *previousID = [previous objectForKey:@"bundleID"];
+    if (previousID != nil && ![identitySet containsObject:previousID]) {
+        [identities addObject:previousID];
+        [identitySet addObject:previousID];
+    }
+    for (NSString *pred in [entry predecessorBundleIDs]) {
+        if (![identitySet containsObject:pred]) {
+            [identities addObject:pred];
+            [identitySet addObject:pred];
+        }
+    }
+
+    // (1) Close the app if it is running, for every identity.
+    for (NSString *bundleID in identities) {
+        NSArray *running =
+            [NSRunningApplication runningApplicationsWithBundleIdentifier:bundleID];
+        for (NSRunningApplication *app in running) {
+            if ([app processIdentifier] == getpid()) continue; // self
+            if (![self closeRunningApplication:app
+                                    bundleID:bundleID
+                                   entryName:[entry name]
+                                         error:error]) {
+                return NO;
+            }
+        }
+    }
+
+    // (2) Remove the previous version's bundle(s): Trash, never rm.
+    NSMutableArray *candidates = [NSMutableArray array];
+    NSMutableSet *seenPaths = [NSMutableSet set];
+    if (previousPath != nil && [fm fileExistsAtPath:previousPath] &&
+        ![seenPaths containsObject:previousPath]) {
+        NSString *onDiskID = DistroBundleIdentifierAtPath(previousPath);
+        if (onDiskID != nil && [identitySet containsObject:onDiskID]) {
+            [candidates addObject:previousPath];
+            [seenPaths addObject:previousPath];
+        }
+    }
+    NSArray *appsDirs = [NSArray arrayWithObjects:
+        @"/Applications",
+        [NSHomeDirectory() stringByAppendingPathComponent:@"Applications"],
+        nil];
+    for (NSString *dir in appsDirs) {
+        NSArray *names = [fm contentsOfDirectoryAtPath:dir error:NULL];
+        for (NSString *name in names) {
+            if (![[name pathExtension] isEqualToString:@"app"]) continue;
+            NSString *path = [dir stringByAppendingPathComponent:name];
+            if ([seenPaths containsObject:path]) continue;
+            NSString *onDiskID = DistroBundleIdentifierAtPath(path);
+            if (onDiskID != nil && [identitySet containsObject:onDiskID]) {
+                [candidates addObject:path];
+                [seenPaths addObject:path];
+            }
+        }
+    }
+    if ([fm fileExistsAtPath:dest] && ![seenPaths containsObject:dest]) {
+        [candidates addObject:dest];
+        [seenPaths addObject:dest];
+    }
+    for (NSString *path in candidates) {
+        NSError *trashError = nil;
+        if (![fm trashItemAtURL:[NSURL fileURLWithPath:path]
+               resultingItemURL:NULL error:&trashError]) {
+            if (error) *error = DistroInstallError(15,
+                [NSString stringWithFormat:
+                    @"The existing copy at %@ could not be moved to the Trash: %@",
+                    path, [trashError localizedDescription]]);
+            return NO;
+        }
+    }
+    return YES;
+}
+
+// Closes one running application: graceful terminate, a 5-second
+// grace, then force-terminate; still running 3 seconds after that
+// stops the install (error 17) — a bundle is never swapped under a
+// running process.
++ (BOOL)closeRunningApplication:(NSRunningApplication *)app
+                       bundleID:(NSString *)bundleID
+                      entryName:(NSString *)entryName
+                          error:(NSError **)error {
+    if ([app isTerminated]) return YES;
+    [app terminate];
+    NSDate *deadline = [NSDate dateWithTimeIntervalSinceNow:5.0];
+    while (![app isTerminated] &&
+           [[NSDate date] compare:deadline] == NSOrderedAscending) {
+        [NSThread sleepForTimeInterval:0.1];
+    }
+    if ([app isTerminated]) return YES;
+    [app forceTerminate];
+    deadline = [NSDate dateWithTimeIntervalSinceNow:3.0];
+    while (![app isTerminated] &&
+           [[NSDate date] compare:deadline] == NSOrderedAscending) {
+        [NSThread sleepForTimeInterval:0.1];
+    }
+    if ([app isTerminated]) return YES;
+    if (error) *error = DistroInstallError(17,
+        [NSString stringWithFormat:
+            @"%@ is running (%@) and did not quit, so the install "
+            @"stopped before anything was changed. Quit %@ and try again.",
+            entryName, bundleID, entryName]);
+    return NO;
+}
+
 + (NSDictionary *)installZipAtPath:(NSString *)zipPath
                           forEntry:(DistroAppEntry *)entry
                              error:(NSError **)error {
@@ -201,18 +361,18 @@ static NSString *DistroFindAppBundle(NSString *root) {
     }
     NSString *dest = [appsDir stringByAppendingPathComponent:[bundle lastPathComponent]];
 
-    // Overwrite: the old bundle goes to Trash (recoverable), never rm.
-    if ([fm fileExistsAtPath:dest]) {
-        NSError *trashError = nil;
-        if (![fm trashItemAtURL:[NSURL fileURLWithPath:dest]
-               resultingItemURL:NULL error:&trashError]) {
-            [fm removeItemAtPath:staging error:NULL];
-            if (error) *error = DistroInstallError(15,
-                [NSString stringWithFormat:
-                    @"The existing copy at %@ could not be moved to the Trash: %@",
-                    dest, [trashError localizedDescription]]);
-            return nil;
-        }
+    // Pre-flight (standard, J directive 2026-11-10; charter §6):
+    // close the app if it is running and remove the previous
+    // version's bundle before the new bundle is placed. The
+    // destination overwrite of the standing rule is one of
+    // pre-flight's removal candidates. App data is stored
+    // separately and is never touched.
+    if (![self runPreflightForEntry:entry
+                       stagedBundle:bundle
+                               dest:dest
+                              error:error]) {
+        [fm removeItemAtPath:staging error:NULL];
+        return nil;
     }
 
     NSError *moveError = nil;
